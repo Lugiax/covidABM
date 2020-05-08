@@ -10,7 +10,9 @@ import pickle as pk
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from time import sleep
+from matplotlib.widgets import Slider, Button
+import mplcursors
+from collections import OrderedDict
 
 
 class Visualizador():
@@ -18,17 +20,35 @@ class Visualizador():
         plt.ion()
         self.fig = plt.figure(constrained_layout = True,
                               figsize = figsize)
+        
+        self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
+        self.nom_mun = list(datos.keys())[1:]
+        self.datos = datos
+        self.posiciones = posiciones
+        self.tamanos = tamanos
+        self.tamano_ventana = 50
+        self.region_part = 'Mérida'
+        self.t = 0
+        self.t_final = datos['Total'].shape[0]
+        
         gs = self.fig.add_gridspec(2,4)
         self.ax_mapa = self.fig.add_subplot(gs[:2,:2])
         self.ax_gen  = self.fig.add_subplot(gs[0,2:])
         self.ax_part = self.fig.add_subplot(gs[1,2:])
         
-        self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
-        self.datos = datos
-        self.posiciones = posiciones
-        self.tamanos = tamanos
-        self.tamano_ventana = 50
-        self.region_part = 'Akil'
+        ## Se definen los widgets
+        ### Slider
+        slider_ax = plt.axes([0.06,0.04,0.3,0.02])
+        self.slider = Slider(slider_ax, 'Paso', 0, self.t_final-1,
+                             valinit = self.t, valstep = 1, valfmt='%3i')
+        self.slider.on_changed(self.update)
+        ### Botón
+        #button_ax = plt.axes([0.4,0.04,0.05,0.02])
+        #self.button = Button(button_ax, 'Auto')
+        #self.presionado=False
+        #self.button_cid =self.button.on_clicked(self.auto_update)
+
+        
         
         self.init_plot()
         
@@ -38,7 +58,18 @@ class Visualizador():
         self.mapa_scatter = self.ax_mapa.scatter(estado[:,0], estado[:,1],
                                    s = estado[:,2], c = estado[:,3],
                                    cmap = plt.get_cmap('jet'))
-        
+        cursor_mapa = mplcursors.cursor(self.mapa_scatter, hover=True)
+        @cursor_mapa.connect("add")
+        def _(sel):
+            tar_nom = self.nom_mun[sel.target.index]
+            sel.annotation.get_bbox_patch().set(fc="white")
+            sel.annotation.arrow_patch.set(arrowstyle="simple", fc="white", alpha=.5)
+            sel.annotation.set_text(f'{tar_nom}\n'
+                                    f'S: {self.datos[tar_nom][self.t][0]}\n'
+                                    f'E: {self.datos[tar_nom][self.t][1]}\n'
+                                    f'I: {self.datos[tar_nom][self.t][2]}\n'
+                                    f'R: {self.datos[tar_nom][self.t][3]}')
+            
         ## General
         datos_gen = self.datos['Total'][0]
         self.scat_gen = {'Suceptibles':None, 'Expuestos':None, 'Infectados':None, 'Recuperados':None}
@@ -64,11 +95,27 @@ class Visualizador():
         self.fig.canvas.flush_events()
     
     def update(self,i):
+        i = int(i)
+        self.t = i
         self.update_map(i)
         self.update_gen(i)
         self.update_part(i)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+    
+    def auto_update(self, *args, **kwargs):
+        print(args)
+        print(kwargs)
+        if not self.presionado:
+            rango = range(self.t+1, self.t_final)
+            self.button.label = 'Detener'
+            self.presionado=True
+            for i in rango:
+                self.update(i)
+                self.slider.set_val(i)
+        elif self.presionado:
+            self.presionado=False
+            self.button.disconnect(self.button_cid)
     
     
     def update_gen(self, i):
@@ -83,10 +130,8 @@ class Visualizador():
     def update_part(self, i):
         t_inicio = max(0,i-self.tamano_ventana)
         t_fin = max(self.tamano_ventana, i)
-        print(i)
         datos_part = self.datos[self.region_part][:i]
         for j, tipo in enumerate(self.edos_salud):
-            print(j, datos_part)
             self.scat_part[tipo][0].set_data(np.arange(i),
                                    datos_part[:, j])
         self.ax_part.set_xlim(t_inicio,t_fin)
@@ -126,7 +171,7 @@ with open('Datos/datos.pk', 'rb') as f:
     posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones if k in seleccionadas}
     tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones if k in seleccionadas}
 n_it = corrida.shape[0]
-datos={}
+datos=OrderedDict()
 datos['Total'] = corrida.iloc[:,:4].values
 for col in list(corrida.iloc[:,4:].columns):
     valores = np.zeros((n_it,4), dtype = np.uint)
@@ -135,9 +180,9 @@ for col in list(corrida.iloc[:,4:].columns):
     datos[col] = valores
 
 vis = Visualizador(datos, posiciones, tamanos)
-for i in range(1,corrida.shape[0]):
-    vis.update(i)
-    sleep(0)
+#for i in range(1,corrida.shape[0]):
+#    vis.update(i)
+#    sleep(0)
 
 
     

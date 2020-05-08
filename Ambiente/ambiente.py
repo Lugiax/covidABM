@@ -36,7 +36,7 @@ class Mundo(MultiDiGraph):
         self.porcentaje_hombres = 0.49
         self.casasids = []
         self.lugaresids = []
-        self.agentes_a_asignar = []
+        self.agentes_a_asignar=[]
     
     def generar_individuos(self, N, ids = [], attrs={}):
         """
@@ -46,8 +46,9 @@ class Mundo(MultiDiGraph):
         """
         if len(ids)!=N:
             ids = [i for i in range(N)]
-        for i in ids:
-            agente = self.agent_object(i, self.model)
+        agentes = []
+        for i in range(N):
+            agente = self.agent_object(ids[i], self.model)
 
             attrs['sexo'] = 'h' if random()<=self.porcentaje_hombres else 'm'
 
@@ -66,8 +67,8 @@ class Mundo(MultiDiGraph):
             #for at in attrs:
             #    setattr(agente, at, attrs[at])
             
-            self.agentes_a_asignar.append(agente)
-        return self.agentes_a_asignar
+            agentes.append(agente)
+        return agentes
     
     def crear_hogares(self):
         """

@@ -69,6 +69,7 @@ class Modelo(Model):
                                                        ids = ids,
                                                        attrs= self.ind_attrs)
 
+            print(f'{region}: {pob} agentes, {len(individuos)} creados')
             for ind in individuos:
                 if n_infectados>0:
                     ind.salud = self.INFECTADO
@@ -188,7 +189,7 @@ modelo = Modelo(Mundo, Individuo_2,
                 attrs_individuos)
 
 modelo.mundo.ver_espacio('Mérida')
-modelo.correr(1)
+modelo.correr(120)
 data = modelo.datacollector.get_model_vars_dataframe()
 data.to_pickle('Corridas/corrida1.pk')
 data[['Suceptibles', 'Expuestos', 'Infectados', 'Recuperados']].plot()
