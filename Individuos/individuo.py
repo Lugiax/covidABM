@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from mesa import Agent
-from random import random, sample, gauss
+from random import random, sample, gauss, choice
 
 #Algunas constantes
 SUCEPTIBLE = 0
@@ -14,7 +14,7 @@ class Individuo(Agent):
     
     def __init__(self, unique_id, model, edad, sexo):
         super().__init__(unique_id, model)
-        self.ciudad = self.model.ciudad
+        self.mundo = self.model.mundo
         self.pos = None
         self.salud = SUCEPTIBLE
         self.sexo = sexo
@@ -36,42 +36,42 @@ class Individuo(Agent):
         if self.salud == SUCEPTIBLE or self.salud == EXPUESTO:
 
           if self.politica_encasa:
-            habitantes=len(self.ciudad.nodes[self.casa_id]['habitantes'])
+            habitantes=len(self.mundo.nodes[self.casa_id]['habitantes'])
             moverse_entre_nodos = random() < (1/habitantes)
           else:
             moverse_entre_nodos = random() < 0.01
 
           if moverse_entre_nodos:
-              if self.ciudad.nodes[self.nodo_actual]['tipo'] == 'casa':
-                  self.ciudad.mover_en_nodos(self, 'aurrera')
+              if self.mundo.nodes[self.nodo_actual]['tipo'] == 'casa':
+                  self.mundo.mover_en_nodos(self, 'aurrera')
               else:
-                  self.ciudad.mover_en_nodos(self, self.casa_id)
+                  self.mundo.mover_en_nodos(self, self.casa_id)
           else:
-              self.ciudad.siguiente_paso_aleatorio(self)
+              self.mundo.siguiente_paso_aleatorio(self)
 
         elif self.salud == INFECTADO:
 
           moverse_entre_nodos = random() < 0.25
 
           if moverse_entre_nodos and not self.en_cuarentena==2:
-              if self.ciudad.nodes[self.nodo_actual]['tipo'] == 'casa':
-                  self.ciudad.mover_en_nodos(self, 'aurrera')
+              if self.mundo.nodes[self.nodo_actual]['tipo'] == 'casa':
+                  self.mundo.mover_en_nodos(self, 'aurrera')
               else:
-                  self.ciudad.mover_en_nodos(self, self.casa_id)
+                  self.mundo.mover_en_nodos(self, self.casa_id)
           else:
-              self.ciudad.siguiente_paso_aleatorio(self)
+              self.mundo.siguiente_paso_aleatorio(self)
 
         elif self.salud == RECUPERADO:
 
           moverse_entre_nodos = random() < 0.5
 
           if moverse_entre_nodos and not self.en_cuarentena==2:
-              if self.ciudad.nodes[self.nodo_actual]['tipo'] == 'casa':
-                  self.ciudad.mover_en_nodos(self, 'aurrera')
+              if self.mundo.nodes[self.nodo_actual]['tipo'] == 'casa':
+                  self.mundo.mover_en_nodos(self, 'aurrera')
               else:
-                  self.ciudad.mover_en_nodos(self, self.casa_id)
+                  self.mundo.mover_en_nodos(self, self.casa_id)
           else:
-              self.ciudad.siguiente_paso_aleatorio(self)
+              self.mundo.siguiente_paso_aleatorio(self)
 
         self.interactuar()
         
@@ -105,7 +105,7 @@ class Individuo_base(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         #Atributos del individuo
-        self.ciudad = model.ciudad
+        self.mundo = model.mundo
         self.pos = None
         self.salud = model.SUCEPTIBLE
         self.sexo = None
@@ -143,36 +143,36 @@ class Individuo_base(Agent):
     def step(self):
         if self.nodo_actual == self.casa_id and self.quedate_en_casa and\
         random()<1/self.n_familiares:
-            self.ciudad.siguiente_paso_aleatorio(self,
+            self.mundo.siguiente_paso_aleatorio(self,
                                                  self.evitar_agentes)
             
         elif self.salud == self.model.INFECTADO and self.activar_cuarentena:
-            if self.ciudad.nodes[self.nodo_actual]['tipo']!='casa':
-                self.ciudad.mover_en_nodos(self, self.casa_id, pos = (0,0))
+            if self.mundo.nodes[self.nodo_actual]['tipo']!='casa':
+                self.mundo.mover_en_nodos(self, self.casa_id, pos = (0,0))
             else:
                 #Se mueve evitando a los demás agentes
-                self.ciudad.siguiente_paso_aleatorio(self,
+                self.mundo.siguiente_paso_aleatorio(self,
                                                      evitar_agentes = True)
                 
         elif self.model.momento == 0: #Los que trabajan salen
-            self.ciudad.mover_en_nodos(self, 'ciudad')
+            self.mundo.mover_en_nodos(self, 'ciudad')
             
         elif self.model.momento == 1: #Se mueven en su espacio
-            self.ciudad.siguiente_paso_aleatorio(self,
+            self.mundo.siguiente_paso_aleatorio(self,
                                                  self.evitar_agentes)
         elif self.model.momento == 2: #Salen de trabajar
             if random() < self.prob_movimiento:
-                if self.ciudad.nodes[self.nodo_actual]['tipo'] == 'casa':
-                    self.ciudad.mover_en_nodos(self, 'ciudad')
+                if self.mundo.nodes[self.nodo_actual]['tipo'] == 'casa':
+                    self.mundo.mover_en_nodos(self, 'ciudad')
                 else:
-                    self.ciudad.mover_en_nodos(self, self.casa_id)
+                    self.mundo.mover_en_nodos(self, self.casa_id)
             else:
-                self.ciudad.siguiente_paso_aleatorio(self,
+                self.mundo.siguiente_paso_aleatorio(self,
                                                      self.evitar_agentes)
                 
         elif self.model.momento==3:
-            if self.ciudad.nodes[self.nodo_actual]['tipo'] != 'casa':
-                self.ciudad.mover_en_nodos(self, self.casa_id, pos = (0,0))
+            if self.mundo.nodes[self.nodo_actual]['tipo'] != 'casa':
+                self.mundo.mover_en_nodos(self, self.casa_id, pos = (0,0))
             
         self.interactuar()
         
@@ -192,7 +192,7 @@ class Individuo_base(Agent):
 
         if self.salud == self.model.INFECTADO:
             x, y = self.pos
-            contactos = self.ciudad.obtener_contactos(self,
+            contactos = self.mundo.obtener_contactos(self,
                                                       r=self.radio_de_infeccion)
             
             for a in contactos:
@@ -223,13 +223,23 @@ class Individuo_2(Individuo_base):
         ##Atributos de comportamiento
         self.evitar_sintomaticos = False
         self.distancia_paso = 1
+        self.prob_mov_nodos = 0.001
    
 
     def step(self):
-        self.ciudad.siguiente_paso_aleatorio(self, 
-                                            evitar_agentes=self.evitar_agentes,
-                                            evitar_sintomaticos=self.evitar_sintomaticos,
-                                            radio = self.distancia_paso)
+        if random()<self.prob_mov_nodos:
+            disponibles = list(self.mundo.successors(self.nodo_actual))
+            if len(disponibles)>0:
+                nuevo_nodo = choice(disponibles)
+                #print(self.mundo[self.nodo_actual][nuevo_nodo])
+                #print(self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo))
+                if random()<self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo):
+                    self.mundo.mover_en_nodos(self, nuevo_nodo)
+        elif random()<self.prob_movimiento:
+            self.mundo.siguiente_paso_aleatorio(self, 
+                                                evitar_agentes=self.evitar_agentes,
+                                                evitar_sintomaticos=self.evitar_sintomaticos,
+                                                radio = self.distancia_paso)
 
         self.interactuar()
         

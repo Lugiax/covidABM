@@ -6,14 +6,15 @@ Created on Thu Mar 26 10:47:42 2020
 @author: carlos
 """
 
-from networkx import Graph
+from networkx import MultiDiGraph
+import networkx as nx
 from mesa import Agent, Model
 from mesa.space import MultiGrid
 from random import gauss, random, sample, choice, choices, randrange, shuffle
 import numpy as np
 import matplotlib.pyplot as plt
 
-class Ciudad(Graph):
+class Mundo(MultiDiGraph):
     """
     La ciudad es la que se encargará de generar los nodos que representen
     lugares de la ciudad como casas, centros comerciales, iglesias, o lo que sea.
@@ -37,14 +38,15 @@ class Ciudad(Graph):
         self.lugaresids = []
         self.agentes_a_asignar = []
     
-    def generar_individuos(self, attrs={}):
+    def generar_individuos(self, N, ids = [], attrs={}):
         """
         Considerando el porcentaje de hombres y mujeres en la población, y la
         distribución de las edades en la población (considerando una distribución
         normal) se procede a generar la población.
         """
-        
-        for i in range(self.model.num_ind):
+        if len(ids)!=N:
+            ids = [i for i in range(N)]
+        for i in ids:
             agente = self.agent_object(i, self.model)
 
             attrs['sexo'] = 'h' if random()<=self.porcentaje_hombres else 'm'
@@ -59,8 +61,10 @@ class Ciudad(Graph):
                 attrs['asintomatico'] = True
             else: 
                 attrs['asintomatico'] = False
-           
+            ##Se establecen los atributos en attrs
             agente.establecer_atributos(attrs)
+            #for at in attrs:
+            #    setattr(agente, at, attrs[at])
             
             self.agentes_a_asignar.append(agente)
         return self.agentes_a_asignar
@@ -137,14 +141,13 @@ class Ciudad(Graph):
             
     def crear_nodo(self,nodo_id, tipo, ocupantes = [], tamano = None,
                    ind_pos_def = None):
-        assert tipo in ['casa','tienda', 'ciudad']
         if tipo == 'casa':
             assert len(ocupantes)>0, 'No hay ocupantes a asignar en la casa'
             if not tamano:
                 tamano = 2#len(ocupantes)//2+1
             habitantes = [ind.unique_id for ind in ocupantes]
         
-        elif tipo in ['tienda', 'ciudad']:
+        else:
             if not tamano:
                 tamano = 20
             habitantes = []
@@ -152,7 +155,9 @@ class Ciudad(Graph):
         espacio = MultiGrid(width = tamano,
                             height = tamano,
                             torus = False)
-        if not ind_pos_def: 
+        
+        #Cómo colocar a los individuos
+        if ind_pos_def=='vacios': 
             disponibles = espacio.empties[::]
             shuffle(disponibles)
             
@@ -161,7 +166,15 @@ class Ciudad(Graph):
             i.casa_id = nodo_id if tipo=='casa' else None
             i.n_familiares = len(habitantes) if tipo=='casa' else 0
             i.nodo_actual = nodo_id
-            i_pos = disponibles.pop() if not ind_pos_def else [0,0]
+            if isinstance(ind_pos_def, (list, tuple)):
+                #print('Posición definida')
+                i_pos = ind_pos_def
+            elif ind_pos_def=='vacios':
+                #print('Se pone en los vacíos')
+                i_pos = disponibles.pop()
+            elif ind_pos_def=='aleatorio':
+                #print('Aleatorios')
+                i_pos = (randrange(tamano), randrange(tamano))
             espacio.place_agent(i, i_pos)
         
         
@@ -213,6 +226,18 @@ class Ciudad(Graph):
         vecinos.remove(ind)
         return vecinos
     
+    def obtener_agentes_en_nodo(self, nodo_id):
+        espacio = self.obtener_espacio(nodo_id)
+        agentes = []
+        for elementos, x, y in espacio.coord_iter():
+            for agente in elementos:
+                agentes.append(agente)
+        return agentes
+    
+    def obtener_peso(self, u, v, arista=0):
+        return self.get_edge_data(u,v, key=arista)['peso']
+        
+        
     def obtener_familia(self, ind):
         """
         Devuelve una lista con todos los id de cada elemento de la familia,
@@ -254,14 +279,11 @@ class Ciudad(Graph):
 
             elif evitar_sintomaticos:
                 for pos in vecindario:
-                    existe_infectado = False
                     for i in espacio.iter_cell_list_contents(pos):
-                        if i.salud == self.model.INFECTADO and i.asintomatico == False:
-                            existe_infectado = True
-                            break
-                    if not existe_infectado:
-                        nueva_x, nueva_y = pos
-                        break
+                        if i.asintomatico == True or i is self:
+                            continue
+                    nueva_x, nueva_y = pos
+                    break
 
         espacio.move_agent(ind, (nueva_x, nueva_y))
         
@@ -303,12 +325,15 @@ class Ciudad(Graph):
                 cuenta[i][j] = n_individuos_en_celda
                 total += n_individuos_en_celda
         
-        saturacion = total / espacio.height*espacio.width
         ##Luego se muestra una representación
         plt.figure(figsize = figsize)
-        plt.imshow(cuenta, vmin = 0, vmax = saturacion)
+        plt.imshow(cuenta, vmin = 0, vmax = cuenta.max())
         plt.colorbar()
         plt.show()
+    
+    def visualizar(self, pos = None, with_labels = False, figsize =(7,7)):
+        fig, ax = plt.subplots(figsize = figsize)
+        nx.draw(self, pos = pos, with_labels = with_labels, ax = ax)
         
 if __name__=='__main__':
     import networkx as nx
@@ -321,7 +346,7 @@ if __name__=='__main__':
             self.edad = edad
             self.sexo = sexo
     
-    ciudad = Ciudad(modelo, Individuo)
+    ciudad = Mundo(modelo, Individuo)
     ciudad.generarindividuos()
     #Se crean las casas distribuyendo los individuos
     ciudad.crear_hogares()

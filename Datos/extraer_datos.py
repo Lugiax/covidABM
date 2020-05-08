@@ -7,10 +7,10 @@ import pickle
 datos = {}
 
 #Lectura de los límites
-with fiona.open('Limites/gadm36_MEX_1.shp') as shape:
-    for d in shape:
-        if d['properties']['NAME_1'] == 'Yucatán':
-            datos['Yucatán'] = {'limites': d['geometry']['coordinates']}
+#with fiona.open('Limites/gadm36_MEX_1.shp') as shape:
+#    for d in shape:
+#        if d['properties']['NAME_1'] == 'Yucatán':
+#            datos['Yucatán'] = {'limites': d['geometry']['coordinates']}
 
 with fiona.open('Limites/gadm36_MEX_2.shp') as shape:
     print(shape[0]['properties'])
