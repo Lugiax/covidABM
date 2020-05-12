@@ -49,27 +49,24 @@ class Modelo(Model):
     
     def generar_regiones(self):
         datos = self.leer_regiones('Datos/datos.pk')
-        conexiones = self.generar_lista_de_aristas('Datos/conexiones.csv',
+        conexiones = self.generar_lista_de_aristas('Datos/adyacencia.pk',
                                                    list(datos.keys()))
-        seleccionadas = ('Progreso,Ucú,Umán,Chocholá,Akil,Tekax,'+
-                         'Mérida,Abalá,Tecoh,Timucuy,Acanceh,Kanasín,Tixpéhual,Tixkokob,Maní,Chacsinkín,'+
-                         'Yaxkukul,Concal,Sacalum,Chapab,Seyé,Oxkutzcab').split(',')
-        #print(seleccionadas)
+        infectados = self.obtener_infectados('Datos/infectados.csv',
+                                             list(datos.keys()))
         ids_start=0
         self.regiones = {}
         for region in datos:
-            if region not in seleccionadas: continue
+            #if region not in seleccionadas: continue
             self.regiones[region] = datos[region]
-            tamano = 20
-            pob = self.regiones[region]['pob']//100
-            n_infectados = 1
+            tamano = 100
+            pob = self.regiones[region]['pob']//10
             ids = [i for i in range(ids_start, ids_start+pob)]
             ids_start += pob
             individuos = self.mundo.generar_individuos(pob,
                                                        ids = ids,
                                                        attrs= self.ind_attrs)
-
-            print(f'{region}: {pob} agentes, {len(individuos)} creados')
+            n_infectados = infectados[region] if infectados.get(region, None) is not None else 0
+            print(f'{region}: {pob} agentes, {n_infectados} infectados')
             for ind in individuos:
                 if n_infectados>0:
                     ind.salud = self.INFECTADO
@@ -82,9 +79,10 @@ class Modelo(Model):
                                   tamano = tamano,
                                   ind_pos_def = 'aleatorio'
                                   )
+        print('Se crean las aristas')
         self.mundo.add_weighted_edges_from(conexiones, weight = 'peso')
         posiciones = {k: list(self.regiones[k]['centro'])[::-1] for k in self.regiones}
-        self.mundo.visualizar(pos = posiciones, with_labels = True)
+        #self.mundo.visualizar(pos = posiciones, with_labels = True)
         
 
     def norm_coord(self, coord):
@@ -133,23 +131,25 @@ class Modelo(Model):
     
     def generar_lista_de_aristas(self, path, regiones):
         conexiones = []
-        with open(path, 'r') as f:
-            lines = f.readlines()
-            assert len(lines)==len(regiones), f'{len(lines)}!={len(regiones)}'
-            for i, line in enumerate(lines):
-                datos = line.split(',')
-                assert len(datos)==len(regiones)
-                
-                conexiones += [(regiones[i], regiones[j], float(x.strip()))\
-                               for j, x in enumerate(line.split(',')) if x.strip()!='0.0']
+        with open(path, 'rb') as f:
+            datos = pk.load(f)
+            assert len(datos)==len(regiones), f'{len(datos)}!={len(regiones)}'
+            a_agregar=[]
+            for region in datos:                
+                a_agregar = [(region, nueva, peso)\
+                               for nueva, peso in datos[region]]
+                conexiones.extend(a_agregar)
         return conexiones
     
-    def obtener_infectados(self, path):
+    def obtener_infectados(self, path, regiones):
         infectados = {}
         with open(path, 'r') as f:
-            for line in f.readlines():
-                region, n_infectados = line.strip('\n').split(',')
-                infectados[region] = int(n_infectados)
+            for line in f.readlines()[4:]:
+                datos= line.split(',')
+                if datos[1] not in regiones:
+                    print(f'{datos[1]} no está en regiones')
+                else:
+                    infectados[datos[1]] = int(datos[5])
         return infectados
                 
     def step(self):
@@ -188,8 +188,8 @@ attrs_individuos = {#De comportamiento
 modelo = Modelo(Mundo, Individuo_2,
                 attrs_individuos)
 
-modelo.mundo.ver_espacio('Mérida')
-modelo.correr(120)
-data = modelo.datacollector.get_model_vars_dataframe()
-data.to_pickle('Corridas/corrida1.pk')
-data[['Suceptibles', 'Expuestos', 'Infectados', 'Recuperados']].plot()
+#modelo.mundo.ver_espacio('Mérida')
+#modelo.correr(120)
+#data = modelo.datacollector.get_model_vars_dataframe()
+#data.to_pickle('Corridas/corrida1.pk')
+#data[['Suceptibles', 'Expuestos', 'Infectados', 'Recuperados']].plot()

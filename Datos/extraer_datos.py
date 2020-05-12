@@ -2,6 +2,7 @@ import fiona
 import csv
 import pandas as pd
 import pickle
+from collections import OrderedDict
 
 
 datos = {}
@@ -59,5 +60,10 @@ for i in range(pob.shape[0]):
         print(f'\tEl lugar {nombre} no se encontró')
 print(f'\tSe han asignado {contador} datos')
 
+guardar = OrderedDict()
+ordenados = sorted(datos.keys())
+for ordenado in ordenados:
+    guardar[ordenado] = datos[ordenado]
+
 with open('datos.pk', 'wb') as f:
-    pickle.dump(datos, f)
+    pickle.dump(guardar, f)
