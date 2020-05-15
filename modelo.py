@@ -8,6 +8,7 @@ Created on Fri May  1 20:50:13 2020
 
 from Ambiente.ambiente import Mundo
 from Individuos.individuo import Individuo_2
+from utils import obtener_movilidad
 
 from mesa import Model
 from mesa.visualization.modules import CanvasGrid, ChartModule
@@ -16,7 +17,7 @@ from mesa.datacollection import DataCollector
 from mesa.time import RandomActivation
 from collections import OrderedDict
 from random import choices, seed, shuffle
-from math import sqrt
+from math import sqrt, ceil
 import pickle as pk
 import numpy as np
 seed(920204)
@@ -28,13 +29,17 @@ class Modelo(Model):
     INFECTADO = 2
     RECUPERADO = 3
     salud_to_str={0:'Suceptible', 1:'Expuesto', 2:'Infectado', 3:'Recuperado'}
-    pp_dia = 1 ## Son los pasos dados por dia simulado
-    def __init__(self,world_object, agent_object, ind_attrs):
+    pp_dia = 4 ## Son los pasos dados por dia simulado
+
+    def __init__(self,world_object, agent_object, params, ind_attrs):
         super().__init__()
+        self.params = params
         self.mundo = world_object(self,agent_object)
+        self.movilidad = obtener_movilidad('Datos/movilidad.csv')
         self.ind_attrs = ind_attrs
         self.schedule = RandomActivation(self)
         self.generar_regiones()
+        self.dia = 0
         self.n_paso = 0
         
         ## Se define el grid que se representarÃ¡ en la 
@@ -46,6 +51,7 @@ class Modelo(Model):
         reg_reporters = {k: self.conteo_por_reg(k) for k in self.regiones}
         self.datacollector = DataCollector({**model_reporters, **reg_reporters})
         self.conteo_instantaneo = self.conteo()
+
     
     def generar_regiones(self):
         datos = self.leer_regiones('Datos/datos.pk')
@@ -58,23 +64,28 @@ class Modelo(Model):
         for region in datos:
             #if region not in seleccionadas: continue
             self.regiones[region] = datos[region]
-            tamano = 100
-            pob = self.regiones[region]['pob']//10
+            tamano = self.params['area']
+            pob = ceil(self.regiones[region]['pob']//self.params['inds_x_agente'])
             ids = [i for i in range(ids_start, ids_start+pob)]
             ids_start += pob
+
+            #ind_attrs = {**self.ind_attrs, **{'nodo_actual': region,
+            #                              'nodo_casa': region}}
             individuos = self.mundo.generar_individuos(pob,
                                                        ids = ids,
                                                        attrs= self.ind_attrs)
-            n_infectados = infectados[region] if infectados.get(region, None) is not None else 0
+            n_infectados = ceil(infectados[region]/self.params['inds_x_agente'])\
+                            if infectados.get(region, None) is not None else 0
+
             print(f'{region}: {pob} agentes, {n_infectados} infectados')
             for ind in individuos:
                 if n_infectados>0:
                     ind.salud = self.INFECTADO
                     n_infectados -= 1
-                    
+
                 self.schedule.add(ind)
             
-            self.mundo.crear_nodo(region, 'region',
+            self.mundo.crear_nodo(region, 'municipio',
                                   ocupantes = individuos,
                                   tamano = tamano,
                                   ind_pos_def = 'aleatorio'
@@ -82,7 +93,7 @@ class Modelo(Model):
         print('Se crean las aristas')
         self.mundo.add_weighted_edges_from(conexiones, weight = 'peso')
         posiciones = {k: list(self.regiones[k]['centro'])[::-1] for k in self.regiones}
-        #self.mundo.visualizar(pos = posiciones, with_labels = True)
+        self.mundo.visualizar(pos = posiciones, with_labels = True)
         
 
     def norm_coord(self, coord):
@@ -92,16 +103,6 @@ class Modelo(Model):
         delta = esq2-esq1
         return (coord-esq1)/delta
         
-    
-    def obtener_rectangulo(self, regiones):
-        latlim = [-1e100, 1e100]
-        lonlim = [-1e100, 1e100]
-        for region in regiones:
-            print(region)
-            for coord in regiones[region]['limites'][0]:
-                latlim = [min(latlim[0], coord[0]), max(latlim[1], coord[0])]
-                lonlim = [min(lonlim[0], coord[1]), max(lonlim[1], coord[1])]
-        return latlim, lonlim
    
     def conteo(self):
         #Una funciÃ³n para contar los casos actuales en la ciudad
@@ -153,7 +154,7 @@ class Modelo(Model):
         return infectados
                 
     def step(self):
-        self.momento = self.n_paso % self.pp_dia #es el momento del dia
+        self.dia = self.n_paso % self.pp_dia #es el momento del dia
         self.conteo()
         self.datacollector.collect(self)
         self.schedule.step()
@@ -185,11 +186,17 @@ attrs_individuos = {#De comportamiento
                     'radio_de_infeccion': 1
                     }
 
+modelo_params = {
+                    'area':75,
+                    'inds_x_agente':100
+                }
+
 modelo = Modelo(Mundo, Individuo_2,
+                modelo_params,
                 attrs_individuos)
 
 #modelo.mundo.ver_espacio('Mérida')
-#modelo.correr(120)
-#data = modelo.datacollector.get_model_vars_dataframe()
-#data.to_pickle('Corridas/corrida1.pk')
-#data[['Suceptibles', 'Expuestos', 'Infectados', 'Recuperados']].plot()
+modelo.correr(50)
+data = modelo.datacollector.get_model_vars_dataframe()
+data.to_pickle('Corridas/prueba1.pk')
+data[['Suceptibles', 'Expuestos', 'Infectados', 'Recuperados']].plot()

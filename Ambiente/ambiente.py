@@ -30,8 +30,8 @@ class Mundo(MultiDiGraph):
         self.verbose = verbose
         self.agent_object = agent_object
         self.model = model
+        self.p_asintomatico = 0
         self.p_matrimonio = 0.7
-        self.p_asintomatico = 0.5
         self.promedio_hijos = 2
         self.porcentaje_hombres = 0.49
         self.casasids = []
@@ -142,8 +142,8 @@ class Mundo(MultiDiGraph):
             
     def crear_nodo(self,nodo_id, tipo, ocupantes = [], tamano = None,
                    ind_pos_def = None):
-        if tipo == 'casa':
-            assert len(ocupantes)>0, 'No hay ocupantes a asignar en la casa'
+        if tipo == 'municipio':
+            assert len(ocupantes)>0, 'No hay ocupantes a asignar en el munucupio'
             if not tamano:
                 tamano = 2#len(ocupantes)//2+1
             habitantes = [ind.unique_id for ind in ocupantes]
@@ -164,7 +164,7 @@ class Mundo(MultiDiGraph):
             
         
         for i in ocupantes:
-            i.casa_id = nodo_id if tipo=='casa' else None
+            i.nodo_casa = nodo_id if tipo=='casa' else None
             i.n_familiares = len(habitantes) if tipo=='casa' else 0
             i.nodo_actual = nodo_id
             if isinstance(ind_pos_def, (list, tuple)):
@@ -335,6 +335,7 @@ class Mundo(MultiDiGraph):
     def visualizar(self, pos = None, with_labels = False, figsize =(7,7)):
         fig, ax = plt.subplots(figsize = figsize)
         nx.draw(self, pos = pos, with_labels = with_labels, ax = ax)
+        plt.show(block=True)
         
 if __name__=='__main__':
     import networkx as nx

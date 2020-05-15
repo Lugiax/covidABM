@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from mesa import Agent
-from random import random, sample, gauss, choice
+from random import random, sample, gauss, choice, shuffle
 
 #Algunas constantes
 SUCEPTIBLE = 0
@@ -106,6 +106,9 @@ class Individuo_base(Agent):
         super().__init__(unique_id, model)
         #Atributos del individuo
         self.mundo = model.mundo
+        self.nodo_actual = None
+        self.nodo_casa = None
+        self.tray_nodos = list()
         self.pos = None
         self.salud = model.SUCEPTIBLE
         self.sexo = None
@@ -114,7 +117,9 @@ class Individuo_base(Agent):
         self.casa_id = None
         self.nodo_actual = None
         self.n_familiares = 0 #Número de familiares, incluyéndolo
+        self.contador_interacciones = 0
         ##Atributos de comportamiento
+        self.regresar_casa = False
         self.evitar_agentes = True
         self.evitar_sintomaticos = False
         self.activar_cuarentena = False ###Cambiar por: activar_cuarentena
@@ -122,10 +127,10 @@ class Individuo_base(Agent):
         self.prob_movimiento = 0.005
         ##Atributos de la enfermedad
         ### Pasos para:
-        self.pp_infectar = 14*model.pp_dia
-        self.pp_infectar_var = 4*model.pp_dia
-        self.pp_recuperar = 10*model.pp_dia
-        self.pp_recuperar_var = 3*model.pp_dia
+        self.pp_infectar = int(5*model.pp_dia)
+        self.pp_infectar_var = 1*model.pp_dia
+        self.pp_recuperar = int(9*model.pp_dia)
+        self.pp_recuperar_var = 2*model.pp_dia
         ##Atributos ante la enfermedad
         self.prob_contagiar = 0.5
         self.prob_infectarse = 0.8
@@ -196,6 +201,7 @@ class Individuo_base(Agent):
                                                       r=self.radio_de_infeccion)
             
             for a in contactos:
+                self.contador_interacciones += 1
                 if a.salud == self.model.SUCEPTIBLE and\
                 random() < self.prob_contagiar*a.prob_infectarse:
                     a.salud = self.model.EXPUESTO
@@ -227,16 +233,35 @@ class Individuo_2(Individuo_base):
    
 
     def step(self):
-        if random()<self.prob_mov_nodos:
-            disponibles = list(self.mundo.successors(self.nodo_actual))
-            if len(disponibles)>0:
+        dia = self.model.dia
+        momento = self.model.n_paso%self.model.pp_dia
+
+        if momento>1 and self.nodo_actual != self.nodo_casa:
+            self.regresar_casa = True
+
+        if self.regresar_casa or (momento<2 and random()<self.prob_mov_nodos):
+            if self.regresar_casa and len(self.tray_nodos)>0:
+                nuevo_nodo = self.tray_nodos.pop()
+            else:
+                self.regresar_casa = False
+                disponibles = list(self.mundo.successors(self.nodo_actual))
                 nuevo_nodo = choice(disponibles)
-                #print(self.mundo[self.nodo_actual][nuevo_nodo])
-                #print(self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo))
-                if random()<self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo):
-                    self.mundo.mover_en_nodos(self, nuevo_nodo)
-        elif random()<self.prob_movimiento:
-            self.mundo.siguiente_paso_aleatorio(self, 
+
+            if (self.regresar_casa or 
+            random()<self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo)):
+                self.mundo.mover_en_nodos(self, nuevo_nodo)
+                ## Regresa a casa, se resetea el vector de trayectoria
+                if nuevo_nodo == self.nodo_casa:
+                    self.tray_nodos = []
+                else:
+                    self.tray_nodos.append(nuevo_nodo)
+
+        else:
+            prob_mov = (1+self.model.movilidad[dia,1]/100)*self.prob_movimiento\
+                if dia<len(self.model.movilidad) else self.prob_movimiento
+            
+            if random()<prob_mov:
+                self.mundo.siguiente_paso_aleatorio(self, 
                                                 evitar_agentes=self.evitar_agentes,
                                                 evitar_sintomaticos=self.evitar_sintomaticos,
                                                 radio = self.distancia_paso)
