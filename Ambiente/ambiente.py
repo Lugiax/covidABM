@@ -164,7 +164,7 @@ class Mundo(MultiDiGraph):
             
         
         for i in ocupantes:
-            i.nodo_casa = nodo_id if tipo=='casa' else None
+            i.nodo_casa = nodo_id if tipo=='municipio' else None
             i.n_familiares = len(habitantes) if tipo=='casa' else 0
             i.nodo_actual = nodo_id
             if isinstance(ind_pos_def, (list, tuple)):

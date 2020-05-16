@@ -107,8 +107,6 @@ class Individuo_base(Agent):
         #Atributos del individuo
         self.mundo = model.mundo
         self.nodo_actual = None
-        self.nodo_casa = None
-        self.tray_nodos = list()
         self.pos = None
         self.salud = model.SUCEPTIBLE
         self.sexo = None
@@ -226,46 +224,111 @@ class Individuo_2(Individuo_base):
     
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
+        self.nodo_casa = None
+        self.tray_nodos = list()
+
         ##Atributos de comportamiento
         self.evitar_sintomaticos = False
         self.distancia_paso = 1
-        self.prob_mov_nodos = 0.001
+        self.frac_mov_nodos = 0.1 #porcentaje de movimiento con respecto al movimiento total
    
 
     def step(self):
+
         dia = self.model.dia
         momento = self.model.n_paso%self.model.pp_dia
 
-        if momento>1 and self.nodo_actual != self.nodo_casa:
-            self.regresar_casa = True
+        prob_mov = (1+self.model.movilidad[dia,1]/100)*self.prob_movimiento\
+                if dia<len(self.model.movilidad) else self.prob_movimiento
 
+        if momento<2:
+            disponibles = list(self.mundo.successors(self.nodo_actual))
+            nuevo_nodo = choice(disponibles)
+            prob_mov_nodos = self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo)*prob_mov
+            if random()<prob_mov_nodos:
+                if nuevo_nodo == self.nodo_casa:
+                    self.tray_nodos = []
+                else:
+                    self.tray_nodos.append(nuevo_nodo)
+                self.mundo.mover_en_nodos(self, nuevo_nodo)
+
+            elif random()<prob_mov:
+                self.mundo.siguiente_paso_aleatorio(self, 
+                                                evitar_agentes=self.evitar_agentes,
+                                                evitar_sintomaticos=self.evitar_sintomaticos,
+                                                radio = self.distancia_paso)
+
+        elif momento>1:
+            regresar = self.nodo_actual != self.nodo_casa
+            if regresar:
+                if len(self.tray_nodos)>0:
+                    self.tray_nodos.pop()
+                nuevo_nodo = self.tray_nodos[-1] if len(self.tray_nodos)>0\
+                                                 else self.nodo_casa
+                self.mundo.mover_en_nodos(self, nuevo_nodo)
+            else:
+                self.mundo.siguiente_paso_aleatorio(self, 
+                                                evitar_agentes=self.evitar_agentes,
+                                                evitar_sintomaticos=self.evitar_sintomaticos,
+                                                radio = self.distancia_paso)
+
+
+        """
+        if self.unique_id == 0: print(
+            f'Día: {dia}\nMomento: {momento}'
+            )
+
+        
+        self.regresar_casa = momento>1 and self.nodo_actual != self.nodo_casa
+        print(f'Regresar a casa {self.regresar_casa}')
         if self.regresar_casa or (momento<2 and random()<self.prob_mov_nodos):
-            if self.regresar_casa and len(self.tray_nodos)>0:
-                nuevo_nodo = self.tray_nodos.pop()
+            if self.regresar_casa:
+                print(f'\tPara seleccionar {self.tray_nodos}')
+                nuevo_nodo = self.tray_nodos.pop()\
+                            if len(self.tray_nodos)>0 else self.nodo_casa
+
+                print(
+                    f'\tSe regresa a casa, va a {nuevo_nodo}. Restante {self.tray_nodos}'
+                    )
             else:
                 self.regresar_casa = False
                 disponibles = list(self.mundo.successors(self.nodo_actual))
                 nuevo_nodo = choice(disponibles)
+                print(
+                    f'\tPosible movimiento entre nodos de {self.nodo_actual} a {nuevo_nodo}'
+                    )
 
             if (self.regresar_casa or 
             random()<self.mundo.obtener_peso(self.nodo_actual, nuevo_nodo)):
-                self.mundo.mover_en_nodos(self, nuevo_nodo)
-                ## Regresa a casa, se resetea el vector de trayectoria
                 if nuevo_nodo == self.nodo_casa:
                     self.tray_nodos = []
                 else:
                     self.tray_nodos.append(nuevo_nodo)
 
+                print(f'\t\tSe moverá al nodo {nuevo_nodo} (debe coincidir con el anterior)')
+                self.mundo.mover_en_nodos(self, nuevo_nodo)
+                ## Regresa a casa, se resetea el vector de trayectoria
+                print(
+                    f'\t\tNueva trayectoria: {self.tray_nodos}'
+                    )
+
         else:
             prob_mov = (1+self.model.movilidad[dia,1]/100)*self.prob_movimiento\
                 if dia<len(self.model.movilidad) else self.prob_movimiento
+            if self.unique_id == 0: print(
+                    f'\tSe mueve en su espacio, con probabilidad {prob_mov}'
+                    )
             
             if random()<prob_mov:
                 self.mundo.siguiente_paso_aleatorio(self, 
                                                 evitar_agentes=self.evitar_agentes,
                                                 evitar_sintomaticos=self.evitar_sintomaticos,
                                                 radio = self.distancia_paso)
-
+                if self.unique_id == 0: print(
+                    f'\t\tSe movió'
+                    )
+                
+        """
         self.interactuar()
         
         ## Se revisa la evolución de su salud
@@ -277,6 +340,8 @@ class Individuo_2(Individuo_base):
             self.pp_recuperarse -= 1
             if self.pp_recuperarse == 0:
                 self.salud = self.model.RECUPERADO
+        
+        
 
     def aplicar_medidas(self, medidas = {}):
         self.establecer_atributos(medidas)
