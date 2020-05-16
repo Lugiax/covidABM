@@ -67,7 +67,7 @@ class Modelo(Model):
             n_infectados = ceil(infectados[region]/self.params['inds_x_agente'])\
                             if infectados.get(region, None) is not None else 0
 
-            print(f'{region}: {pob} agentes, {n_infectados} infectados')
+            #print(f'{region}: {pob} agentes, {n_infectados} infectados')
             for ind in individuos:
                 if n_infectados>0:
                     ind.salud = self.INFECTADO
