@@ -32,7 +32,7 @@ ajustes = [#{},
     #{'prob_movimiento':0.1},
     #{'frac_mov_nodos':0.1},
     #{'frac_mov_nodos':0.001},
-    #{'evitar_agentes':True, 'prob_movimiento':0.3},
+    {'evitar_agentes':True, 'prob_movimiento':0.3},
     {'evitar_agentes':True, 'prob_movimiento':0.3, 'frac_mov_nodos':0.1},
     {'evitar_agentes':True, 'prob_movimiento':0.1, 'frac_mov_nodos':0.001},
     {'evitar_agentes':True, 'prob_movimiento':0.1, 'frac_mov_nodos':0.001, 'radio_de_infeccion':2}
@@ -51,7 +51,7 @@ for i, ajuste in enumerate(ajustes):
                     atributos)
     modelo.correr(numero_de_pasos)
     data = modelo.datacollector.get_model_vars_dataframe()
-    data.to_pickle(f'resultados/ajuste4_{i}.pk')
+    data.to_pickle(f'resultados/ajuste2_{i}.pk')
     print('\tResultados guardados correctamente\n---------------------------------------')
 
     del(modelo)
