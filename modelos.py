@@ -34,7 +34,8 @@ class Modelo(Model):
         
         ## Se define el grid que se representarÃ¡ en la 
         #self.grid = self.ciudad.nodes['ciudad']['espacio']
-        model_reporters = {'Suceptibles': self.conteo_func(self.SUCEPTIBLE),
+        model_reporters = { 'Dia': lambda x: x.dia,
+                            'Suceptibles': self.conteo_func(self.SUCEPTIBLE),
                             'Expuestos': self.conteo_func(self.EXPUESTO),
                             'Infectados': self.conteo_func(self.INFECTADO),
                             'Recuperados': self.conteo_func(self.RECUPERADO)}

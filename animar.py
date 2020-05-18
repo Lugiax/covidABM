@@ -203,4 +203,7 @@ def norm_coord(coord):
 
 
 if __name__=='__main__':
-    vis = Visualizador('Pruebas/prueba_dias1.pk')
+    import sys
+    path = sys.argv[1]
+    print(f'Leyendo archivo en {path}')
+    vis = Visualizador(path)
