@@ -23,11 +23,11 @@ class Visualizador():
         self.leer_datos(path)
         
         self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
-        self.nom_mun = list(self.datos.keys())[1:]
+        self.nom_mun = list(self.datos.columns.levels[0])[1:]
         self.tamano_ventana = 50
         self.region_part = 'Valladolid'
         self.t = 0
-        self.t_final = self.datos['Total'].shape[0]
+        self.t_final = self.datos.shape[0]
         
         gs = self.fig.add_gridspec(2,4)
         self.ax_mapa = self.fig.add_subplot(gs[:2,:2])
@@ -66,21 +66,21 @@ class Visualizador():
             sel.annotation.get_bbox_patch().set(fc="white")
             sel.annotation.arrow_patch.set(arrowstyle="simple", fc="white", alpha=.5)
             sel.annotation.set_text(f'{tar_nom}\n'
-                                    f'S: {self.datos[tar_nom][self.t][0]}\n'
-                                    f'E: {self.datos[tar_nom][self.t][1]}\n'
-                                    f'I: {self.datos[tar_nom][self.t][2]}\n'
-                                    f'R: {self.datos[tar_nom][self.t][3]}')
+                                    f'S: {int(self.datos.loc[self.t, tar_nom]["S"])}\n'
+                                    f'E: {int(self.datos.loc[self.t, tar_nom]["E"])}\n'
+                                    f'I: {int(self.datos.loc[self.t, tar_nom]["I"])}\n'
+                                    f'R: {int(self.datos.loc[self.t, tar_nom]["R"])}')
         
         intervalo = np.arange(0,self.t_final)   
         ## General
         datos_gen = self.datos['Total']
-        self.scat_gen = {'Suceptibles':None, 'Expuestos':None, 'Infectados':None, 'Recuperados':None}
-        for i,val in enumerate(self.scat_gen.keys()):
-            if i in [1,2]:
-                self.scat_gen[val] = self.ax_gen.plot(intervalo, datos_gen[:,i], label= val)
+        self.scat_gen = {'S':None, 'E':None, 'I':None, 'R':None}
+        for val in self.scat_gen.keys():
+            if val in ['S','E','I','R']:
+                self.scat_gen[val] = self.ax_gen.plot(intervalo, datos_gen[val], label= val)
         self.ax_gen.legend(loc='upper center', ncol=4, fontsize = 'x-small')
         self.ax_gen.set_xlim(0,self.tamano_ventana)
-        self.ax_gen.set_ylim(0,datos_gen.max())
+        self.ax_gen.set_ylim(0,datos_gen.values.max())
         self.gen_vline = self.ax_gen.axvline(self.t)
         #print(self.gen_vline.get_xdata())
         self.ax_gen.set_title('Avance general')
@@ -88,12 +88,12 @@ class Visualizador():
         ##Particular
         datos_part = self.datos[self.region_part]#[0]
         self.scat_part = {'Suceptibles':None, 'Expuestos':None, 'Infectados':None, 'Recuperados':None}
-        for j,val in enumerate(self.scat_part.keys()):
-            if j in [0,1,2,3]:
-                self.scat_part[val] = self.ax_part.plot(intervalo, datos_part[:,j], label= val)
+        for val in self.scat_part.keys():
+            if val in ['S','E','I','R']:
+                self.scat_part[val] = self.ax_part.plot(intervalo, datos_part[val], label= val)
         self.ax_part.legend(loc='upper center', ncol=4, fontsize = 'x-small')
         self.ax_part.set_xlim(0,self.tamano_ventana)
-        self.ax_part.set_ylim(0,datos_part.max())
+        self.ax_part.set_ylim(0,datos_part.values.max())
         self.part_vline = self.ax_part.axvline(self.t)
         self.ax_part.set_title('Avance del nodo:')
         
@@ -140,10 +140,6 @@ class Visualizador():
         t_fin = max(self.tamano_ventana, self.tamano_ventana//2+i)\
                     if self.tamano_ventana//2+i<self.t_final else self.t_final
         self.gen_vline.set_xdata([i,i])
-        #datos_gen = self.datos['Total'][:i]
-        #for j, tipo in enumerate(self.edos_salud):
-        #    self.scat_gen[tipo][0].set_data(np.arange(i),
-        #                           datos_gen[:, j])
         self.ax_gen.set_xlim(t_inicio,t_fin)
     
     def update_part(self, i):
@@ -153,12 +149,7 @@ class Visualizador():
         t_fin = max(self.tamano_ventana, self.tamano_ventana//2+i)\
                     if self.tamano_ventana//2+i<self.t_final else self.t_final
         self.part_vline.set_xdata([i, i])
-        #datos_part = self.datos[self.region_part][:i]
-        #for j, tipo in enumerate(self.edos_salud):
-        #    self.scat_part[tipo][0].set_data(np.arange(i),
-        #                           datos_part[:, j])
         self.ax_part.set_xlim(t_inicio,t_fin)
-        #self.ax_part.set_ylim(0,datos_part.max())
 
     def update_map(self, i):
         state = self.obtener_estado_mapa(i)
@@ -171,26 +162,36 @@ class Visualizador():
         estado = np.zeros((len(self.nom_mun), 4)) #x, y, tamaño, color
         for j, region in enumerate(self.posiciones):
             coord = self.posiciones[region]
-            datos = self.datos[region][step]
-            infectados = datos[2]/datos.sum()
+            datos = self.datos.loc[step, region]
+            infectados = datos['I']/datos.sum()
             estado[j] = np.array([coord[0], coord[1],
                                   self.tamanos[region], infectados])
         return(estado)
 
     def leer_datos(self,path):
         corrida = pd.read_pickle(path)
+        totales = corrida.iloc[:,:5].values
         with open('Datos/datos.pk', 'rb') as f:
             regiones = pk.load(f)
             self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
             self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
-        n_it = corrida.shape[0]
-        self.datos=OrderedDict()
-        self.datos['Total'] = corrida.iloc[:,:4].values
-        for col in list(corrida.iloc[:,4:].columns):
-            valores = np.zeros((n_it,4), dtype = np.uint)
-            for i in range(n_it):
-                valores[i] = np.array(corrida.loc[i, col])
-            self.datos[col] = valores
+        n_fil = corrida.shape[0]
+        n_col = corrida.shape[1]
+        conteos = np.zeros((n_fil, (n_col-5)*4), dtype = np.uint)
+        for i in range(n_fil):
+            for j in range(5,n_col-5):
+                conteos[i, j*4:(j+1)*4] = np.array(corrida.iloc[i, j])
+        #print(list(corrida.iloc[:,5:].columns))
+        conteos_cols = pd.MultiIndex.from_product([list(corrida.iloc[:,5:].columns),
+                                                  ['S','E','I','R']])
+        totales_cols = pd.MultiIndex.from_product([['Total'],
+                                                  ['Dia','S','E','I','R']])
+        df_tot = pd.DataFrame(totales, columns = totales_cols)
+        #print(df_tot)
+        df_cont= pd.DataFrame(conteos, columns = conteos_cols)
+        datos = pd.concat((df_tot, df_cont), axis = 1)
+        self.datos = datos.groupby([('Total', 'Dia')]).mean()
+        
         
 
 def norm_coord(coord):
@@ -202,4 +203,4 @@ def norm_coord(coord):
 
 
 if __name__=='__main__':
-    vis = Visualizador('Pruebas/prueba1.pk')
+    vis = Visualizador('Pruebas/prueba_dias1.pk')
