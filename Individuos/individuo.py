@@ -238,7 +238,7 @@ class Individuo_2(Individuo_base):
         dia = self.model.dia
         momento = self.model.n_paso%self.model.pp_dia
 
-        prob_mov = (1+self.model.movilidad[dia,1]/100)*self.prob_movimiento\
+        prob_mov = (1+self.model.movilidad.iloc[dia,1]/100)*self.prob_movimiento\
                 if dia<len(self.model.movilidad) else self.prob_movimiento
 
         if momento<2:

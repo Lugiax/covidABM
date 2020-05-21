@@ -84,7 +84,7 @@ class Modelo(Model):
                                   tamano = tamano,
                                   ind_pos_def = 'aleatorio'
                                   )
-        print('Se crean las aristas')
+        #print('Se crean las aristas')
         self.mundo.add_weighted_edges_from(conexiones, weight = 'peso')
         posiciones = {k: list(self.regiones[k]['centro'])[::-1] for k in self.regiones}
         #self.mundo.visualizar(pos = posiciones, with_labels = True)
@@ -156,10 +156,10 @@ class Modelo(Model):
         
         
     def correr(self, n_steps):
-        bloques = int(n_steps*0.1)
-        print('---- Corriendo simulación ----')
+        #bloques = int(n_steps*0.1)
+        #print('---- Corriendo simulación ----')
         for i in range(n_steps):
             self.step()
-            if int(i%bloques) == 0:
-                print('%d%% ... '%(int(i/n_steps*100)), end = '')
-        print('100%')
+            #if int(i%bloques) == 0:
+            #    print('%d%% ... '%(int(i/n_steps*100)), end = '')
+        #print('100%')

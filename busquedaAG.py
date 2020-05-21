@@ -10,8 +10,10 @@ from AG import AG
 import pandas as pd
 import numpy as np
 import datetime
+import pickle as pk
+import time
 
-def error():
+def error(*args):
 	dia_cero = datetime.datetime(2020,4,20)
 	un_dia = datetime.timedelta(days = 1)
 	dia_final = datetime.datetime(2020,5,1)#list(hist.columns.get_level_values(0))[-1]
@@ -21,18 +23,15 @@ def error():
 	hist = hist.iloc[:, hist.columns.get_level_values(1)=='Activos']
 	hist = hist.iloc[:, hist.columns.get_level_values(0)>=dia_cero]
 	hist = hist.iloc[:, hist.columns.get_level_values(0)<=dia_final]
-
-
-	print(f'Dia cero {dia_cero}, dia final {dia_final}. Dias totales {n_dias}')	
-	
+	#print(f'Dia cero {dia_cero}, dia final {dia_final}. Dias totales {n_dias}')
 	attrs_individuos = {#De comportamiento
-	                    'evitar_agentes': False,
+	                    'evitar_agentes': False if args[0]<0.5 else True,
 	                    'distancia_paso': 1,
-	                    'prob_movimiento':0.5,
-	                    'frac_mov_nodos':0.01,
+	                    'prob_movimiento': args[1],#0.5,
+	                    'frac_mov_nodos': args[2], #0.01,
 	                    #Ante la enfermedad
-	                    'prob_contagiar': 0.2,
-	                    'prob_infectarse': 0.1,
+	                    'prob_contagiar': args[3], #0.2,
+	                    'prob_infectarse': args[4], #0.1,
 	                    'radio_de_infeccion': 0
 	                    }
 	modelo_params = {
@@ -43,6 +42,7 @@ def error():
 	                modelo_params,
 	                attrs_individuos)
 	modelo.correr((n_dias+1)*4)
+
 	simu = modelo.datacollector.get_model_vars_dataframe()
 	simu = convertir_corrida(simu)
 	
@@ -63,4 +63,27 @@ def error():
 	#suma = res.sum(axis=0)
 	return res.sum()
 
-print(error())
+
+ag=AG(deb=True)
+ag.parametros(Nind=5,Ngen=10,optim=0, pres=0.1, procesos = 4)
+ag.variables(variables=[['evitar_agentes', 0, 1],
+	                    ['prob_movimiento', 0.1, 0.5],#0.5,
+	                    ['frac_mov_nodos', 0, 0.3], #0.01,
+	                    ['prob_contagiar', 0.001, 0.3], #0.2,
+	                    ['prob_infectarse', 0.001, 0.3] #0.1,
+	                    ])
+
+
+ag.Fobj(error)
+t1=time.time()
+res=ag.start()
+print('Tiempo de cómputo {:.4e}'.format(time.time()-t1))
+
+with open('resultados/resAG1.pk', 'wb') as f:
+	pk.dump(res, f)
+print('Los resultados son:')
+
+for val, tipo in zip(res[0],['evitar_agentes','prob_movimiento',
+						'frac_mov_nodos','prob_contagiar','prob_infectarse']):
+	print(f'{tipo}: {val}')
+print(f'Valor más pequeño de la función objetivo: {res[1]}')
