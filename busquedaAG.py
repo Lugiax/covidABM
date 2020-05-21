@@ -35,8 +35,8 @@ def error(*args):
 	                    'radio_de_infeccion': 0
 	                    }
 	modelo_params = {
-	                    'area':5,
-	                    'inds_x_agente':500,
+	                    'area':200,
+	                    'inds_x_agente':5,
 	                    'dia_cero':dia_cero
 	                }
 	modelo = Modelo(Mundo, Individuo_2,
@@ -60,7 +60,7 @@ def error(*args):
 	muns = list(simu.index)
 	res = np.zeros(simu.shape)
 	for i, mun in enumerate(muns):
-	    res[i] = (hist.loc[mun].values-simu.loc[mun].values)**2
+	    res[i] = (hist.loc[mun].values/modelo_params['inds_x_agente']-simu.loc[mun].values)**2
 	#suma = res.sum(axis=0)
 	return res.sum()
 
