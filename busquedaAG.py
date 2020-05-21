@@ -77,7 +77,7 @@ ag.variables(variables=[['evitar_agentes', 0, 1],
 ag.Fobj(error)
 t1=time.time()
 res=ag.start()
-print('Tiempo de cómputo {:.4e}s'.format(int((time.time()-t1)/1000)))
+print('Tiempo de cómputo {}ms'.format(int(time.time()-t1)))
 
 with open('resultados/resAG1.pk', 'wb') as f:
 	pk.dump(res, f)

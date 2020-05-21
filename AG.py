@@ -124,9 +124,10 @@ class AG(object):
                 resultados_fitness.append([fit_ind,ind])
         else:
             #salidas = Queue()
-            resultados_fitness=[[self.pool.apply(self.f_obj,
+            salidas=[(self.pool.apply_async(self.f_obj,
                                                 args=self.decodificado(ind)),
-                                ind] for ind in pob]
+                                ind) for ind in pob]
+            resultados_fitness=[[p.get(), ind] for p, ind in salidas]
 
         resultados_fitness.sort(reverse=self.max)
         return(resultados_fitness)
