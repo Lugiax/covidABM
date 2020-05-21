@@ -7,6 +7,7 @@ from collections import OrderedDict
 from random import choices, seed, shuffle
 from math import sqrt, ceil
 import pickle as pk
+import pandas as pd
 import numpy as np
 
 
@@ -25,7 +26,9 @@ class Modelo(Model):
         super().__init__()
         self.params = params
         self.mundo = world_object(self,agent_object)
-        self.movilidad = obtener_movilidad('Datos/movilidad.csv')
+        self.movilidad = obtener_movilidad()
+        self.dia_cero = pd.Timestamp('2020/04/18')
+
         self.ind_attrs = ind_attrs
         self.schedule = RandomActivation(self)
         self.generar_regiones()

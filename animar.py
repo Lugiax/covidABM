@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, TextBox
 import mplcursors
 from collections import OrderedDict
+from utils import leer_corrida
 
 
 class Visualizador():
@@ -20,7 +21,13 @@ class Visualizador():
         plt.ion()
         self.fig = plt.figure(constrained_layout = True,
                               figsize = figsize)
-        self.leer_datos(path)
+
+        with open('Datos/datos.pk', 'rb') as f:
+            regiones = pk.load(f)
+            self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
+            self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
+
+        self.datos = leer_corrida(path)
         
         self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
         self.nom_mun = list(self.datos.columns.levels[0])[1:]
@@ -168,13 +175,10 @@ class Visualizador():
                                   self.tamanos[region], infectados])
         return(estado)
 
-    def leer_datos(self,path):
+    def leer_corrida(path):
         corrida = pd.read_pickle(path)
         totales = corrida.iloc[:,:5].values
-        with open('Datos/datos.pk', 'rb') as f:
-            regiones = pk.load(f)
-            self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
-            self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
+
         n_fil = corrida.shape[0]
         n_col = corrida.shape[1]
         conteos = np.zeros((n_fil, (n_col-5)*4), dtype = np.uint)
