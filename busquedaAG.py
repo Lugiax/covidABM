@@ -65,7 +65,7 @@ def error(*args):
 
 
 ag=AG(deb=True)
-ag.parametros(Nind=5,Ngen=10,optim=0, pres=0.1, procesos = 4)
+ag.parametros(Nind=5,Ngen=10,optim=0, pres=0.1, procesos = 16)
 ag.variables(variables=[['evitar_agentes', 0, 1],
 	                    ['prob_movimiento', 0.1, 0.5],#0.5,
 	                    ['frac_mov_nodos', 0, 0.3], #0.01,
@@ -77,7 +77,7 @@ ag.variables(variables=[['evitar_agentes', 0, 1],
 ag.Fobj(error)
 t1=time.time()
 res=ag.start()
-print('Tiempo de cómputo {:.4e}'.format(time.time()-t1))
+print('Tiempo de cómputo {:.4e}s'.format(int((time.time()-t1)/1000)))
 
 with open('resultados/resAG1.pk', 'wb') as f:
 	pk.dump(res, f)
