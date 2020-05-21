@@ -10,7 +10,8 @@ def obtener_movilidad(*args):
 	df['change'] = df.iloc[:,4:].mean(axis=1)
 	#df['dias'] = (pd.to_datetime(df.date) - pd.Timestamp('2020-02-15'))/pd.Timedelta('1 day')
 	#return df[['dias','change']].values
-	return df[['date', 'change']]
+	df = df.set_index('date')
+	return df['change']
 
 
 def leer_historico():
@@ -42,7 +43,7 @@ def convertir_corrida(corrida):
 
 
 if __name__=='__main__':
-	print(obtener_movilidad().head())
+	print(obtener_movilidad().loc['2020-02-16'])
 	df = leer_historico()
 	print(df.head())
 	fecha = pd.Timestamp('2020-03-17')

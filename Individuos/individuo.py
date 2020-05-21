@@ -237,9 +237,10 @@ class Individuo_2(Individuo_base):
 
         dia = self.model.dia
         momento = self.model.n_paso%self.model.pp_dia
-
-        prob_mov = (1+self.model.movilidad.iloc[dia,1]/100)*self.prob_movimiento\
-                if dia<len(self.model.movilidad) else self.prob_movimiento
+        fecha = (self.model.dia_cero + self.model.un_dia*dia).strftime('%Y-%m-%d')
+        
+        prob_mov = (1+self.model.movilidad.loc[fecha]/100)*self.prob_movimiento\
+                if dia<self.model.movilidad.shape[0] else self.prob_movimiento
 
         if momento<2:
             disponibles = list(self.mundo.successors(self.nodo_actual))

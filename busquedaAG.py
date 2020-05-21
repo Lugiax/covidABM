@@ -36,7 +36,8 @@ def error(*args):
 	                    }
 	modelo_params = {
 	                    'area':5,
-	                    'inds_x_agente':500
+	                    'inds_x_agente':500,
+	                    'dia_cero':dia_cero
 	                }
 	modelo = Modelo(Mundo, Individuo_2,
 	                modelo_params,
@@ -65,12 +66,12 @@ def error(*args):
 
 
 ag=AG(deb=True)
-ag.parametros(Nind=5,Ngen=10,optim=0, pres=0.1, procesos = 16)
+ag.parametros(Nind=20,Ngen=50,optim=0, pres=0.001, procesos = 16)
 ag.variables(variables=[['evitar_agentes', 0, 1],
-	                    ['prob_movimiento', 0.1, 0.5],#0.5,
-	                    ['frac_mov_nodos', 0, 0.3], #0.01,
-	                    ['prob_contagiar', 0.001, 0.3], #0.2,
-	                    ['prob_infectarse', 0.001, 0.3] #0.1,
+	                    ['prob_movimiento', 0.01, 0.5],#0.5,
+	                    ['frac_mov_nodos', 0.001, 0.3], #0.01,
+	                    ['prob_contagiar', 0.001, 0.4], #0.2,
+	                    ['prob_infectarse', 0.001, 0.4] #0.1,
 	                    ])
 
 
