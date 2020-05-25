@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, TextBox
 import mplcursors
 from collections import OrderedDict
-from utils import leer_corrida
+from utils import convertir_corrida
 
 
 class Visualizador():
@@ -24,13 +24,13 @@ class Visualizador():
 
         with open('Datos/datos.pk', 'rb') as f:
             regiones = pk.load(f)
+            self.nom_mun = list(regiones.keys())
             self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
             self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
 
-        self.datos = leer_corrida(path)
+        self.datos = convertir_corrida(path)
         
         self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
-        self.nom_mun = list(self.datos.columns.levels[0])[1:]
         self.tamano_ventana = 50
         self.region_part = 'Valladolid'
         self.t = 0
@@ -60,7 +60,6 @@ class Visualizador():
 
         self.init_plot()
         
-
     def init_plot(self):
         estado = self.obtener_estado_mapa(0)
         self.mapa_scatter = self.ax_mapa.scatter(estado[:,0], estado[:,1],
@@ -89,12 +88,11 @@ class Visualizador():
         self.ax_gen.set_xlim(0,self.tamano_ventana)
         self.ax_gen.set_ylim(0,datos_gen.values.max())
         self.gen_vline = self.ax_gen.axvline(self.t)
-        #print(self.gen_vline.get_xdata())
         self.ax_gen.set_title('Avance general')
         
         ##Particular
         datos_part = self.datos[self.region_part]#[0]
-        self.scat_part = {'Suceptibles':None, 'Expuestos':None, 'Infectados':None, 'Recuperados':None}
+        self.scat_part = {'S':None, 'E':None, 'I':None, 'R':None}
         for val in self.scat_part.keys():
             if val in ['S','E','I','R']:
                 self.scat_part[val] = self.ax_part.plot(intervalo, datos_part[val], label= val)
@@ -160,8 +158,8 @@ class Visualizador():
 
     def update_map(self, i):
         state = self.obtener_estado_mapa(i)
-        self.mapa_scatter.set_offsets(state[:,:2])
-        self.mapa_scatter.set_sizes(state[:,2])
+        #self.mapa_scatter.set_offsets(state[:,:2])
+        #self.mapa_scatter.set_sizes(state[:,2])
         self.mapa_scatter.set_array(state[:,3])
         
         
@@ -170,7 +168,7 @@ class Visualizador():
         for j, region in enumerate(self.posiciones):
             coord = self.posiciones[region]
             datos = self.datos.loc[step, region]
-            infectados = datos['I']/datos.sum()
+            infectados = datos['I']/datos.sum() if datos.sum()>0 else 0
             estado[j] = np.array([coord[0], coord[1],
                                   self.tamanos[region], infectados])
         return(estado)

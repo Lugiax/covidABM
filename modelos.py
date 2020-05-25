@@ -11,15 +11,15 @@ import pandas as pd
 import numpy as np
 import datetime
 
-from utils import obtener_movilidad
+from utils import obtener_movilidad, leer_historico
 
 class Modelo(Model):
     #Algunas constantes
-    SUCEPTIBLE = 0
+    SUSCEPTIBLE = 0
     EXPUESTO = 1
     INFECTADO = 2
     RECUPERADO = 3
-    salud_to_str={0:'Suceptible', 1:'Expuesto', 2:'Infectado', 3:'Recuperado'}
+    salud_to_str={0:'Susceptible', 1:'Expuesto', 2:'Infectado', 3:'Recuperado'}
     pp_dia = 4 ## Son los pasos dados por dia simulado
 
     def __init__(self,world_object, agent_object, params, ind_attrs):
@@ -28,6 +28,7 @@ class Modelo(Model):
         self.mundo = world_object(self,agent_object)
         self.movilidad = obtener_movilidad()
         self.dia_cero = params['dia_cero']
+        self.prop_inf_suscep = params['prop_inf_suscep'] #Proporcion entre infectaros y suceptibles a la fecha
         self.un_dia = datetime.timedelta(days=1)
         self.ind_attrs = ind_attrs
         self.schedule = RandomActivation(self)
@@ -38,7 +39,7 @@ class Modelo(Model):
         ## Se define el grid que se representarÃ¡ en la 
         #self.grid = self.ciudad.nodes['ciudad']['espacio']
         model_reporters = { 'Dia': lambda x: x.dia,
-                            'Suceptibles': self.conteo_func(self.SUCEPTIBLE),
+                            'Suceptibles': self.conteo_func(self.SUSCEPTIBLE),
                             'Expuestos': self.conteo_func(self.EXPUESTO),
                             'Infectados': self.conteo_func(self.INFECTADO),
                             'Recuperados': self.conteo_func(self.RECUPERADO)}
@@ -51,8 +52,11 @@ class Modelo(Model):
         datos = self.leer_regiones('Datos/datos.pk')
         conexiones = self.generar_lista_de_aristas('Datos/adyacencia.pk',
                                                    list(datos.keys()))
-        infectados = self.obtener_infectados('Datos/infectados.csv',
-                                             list(datos.keys()))
+        #infectados = self.obtener_infectados('Datos/infectados.csv',
+        #                                     list(datos.keys()))
+        historico = leer_historico()
+        infectados = historico.loc[:, (self.dia_cero, 'Activos')]
+        fecha = self.params['dia_cero']################################3
         ids_start=0
         self.regiones = {}
         for region in datos:
@@ -70,12 +74,15 @@ class Modelo(Model):
                                                        attrs= self.ind_attrs)
             n_infectados = ceil(infectados[region]/self.params['inds_x_agente'])\
                             if infectados.get(region, None) is not None else 0
-
-            #print(f'{region}: {pob} agentes, {n_infectados} infectados')
+            n_susceptibles = ceil(n_infectados*self.prop_inf_suscep)
+            #print(f'{region}: {pob} agentes, {n_infectados} infectados, {n_susceptibles} susceptibles')
             for ind in individuos:
                 if n_infectados>0:
                     ind.salud = self.INFECTADO
                     n_infectados -= 1
+                if n_infectados==0 and n_susceptibles>0:
+                    ind.salud = self.SUSCEPTIBLE
+                    n_susceptibles -= 1
 
                 self.schedule.add(ind)
             
@@ -156,10 +163,37 @@ class Modelo(Model):
         
         
     def correr(self, n_steps):
-        #bloques = int(n_steps*0.1)
+        bloques = int(n_steps*0.1)
         #print('---- Corriendo simulación ----')
         for i in range(n_steps):
             self.step()
-            #if int(i%bloques) == 0:
-            #    print('%d%% ... '%(int(i/n_steps*100)), end = '')
+            if int(i%bloques) == 0:
+                #print('%d%% ... '%(int(i/n_steps*100)), end = '')
         #print('100%')
+
+if __name__=='__main__':
+    from Ambiente.ambiente import Mundo
+    from Individuos.individuo import Individuo_2
+    atributos = {#De comportamiento
+                    'evitar_agentes': True,
+                    'distancia_paso': 1,
+                    'prob_movimiento':0.1,
+                    'frac_mov_nodos':0.05,
+                    #Ante la enfermedad
+                    'prob_contagiar': 0.1,
+                    'prob_infectarse': 0.1,
+                    'radio_de_infeccion': 1
+                    }
+    modelo_params = {
+                    'area':1,
+                    'inds_x_agente':500,
+                    'dia_cero':datetime.datetime(2020,4,17),
+                    'prop_inf_suscep': 2
+                }
+
+    modelo = Modelo(Mundo, Individuo_2,
+                modelo_params,
+                atributos)
+    modelo.correr(10)
+    data = modelo.datacollector.get_model_vars_dataframe()
+    data.plot()

@@ -22,7 +22,7 @@ def leer_historico():
 
 def convertir_corrida(corrida):
 	if isinstance(corrida, str):
-		corrida = pd.read_pickle(path)
+		corrida = pd.read_pickle(corrida)
 	
 	totales = corrida.iloc[:,:5].values
 	n_fil, n_col = corrida.shape

@@ -108,7 +108,7 @@ class Individuo_base(Agent):
         self.mundo = model.mundo
         self.nodo_actual = None
         self.pos = None
-        self.salud = model.SUCEPTIBLE
+        self.salud = model.SUSCEPTIBLE
         self.sexo = None
         self.edad = None
         self.trabaja = True
@@ -200,7 +200,7 @@ class Individuo_base(Agent):
             
             for a in contactos:
                 self.contador_interacciones += 1
-                if a.salud == self.model.SUCEPTIBLE and\
+                if a.salud == self.model.SUSCEPTIBLE and\
                 random() < self.prob_contagiar*a.prob_infectarse:
                     a.salud = self.model.EXPUESTO
 

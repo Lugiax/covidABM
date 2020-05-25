@@ -14,7 +14,7 @@ import pickle as pk
 import time
 
 def error(*args):
-	dia_cero = datetime.datetime(2020,4,20)
+	dia_cero = datetime.datetime(2020,4,17)
 	un_dia = datetime.timedelta(days = 1)
 	dia_final = datetime.datetime(2020,5,1)#list(hist.columns.get_level_values(0))[-1]
 	n_dias = int((dia_final-dia_cero)/un_dia)
@@ -35,9 +35,10 @@ def error(*args):
 	                    'radio_de_infeccion': 0
 	                    }
 	modelo_params = {
-	                    'area':200,
-	                    'inds_x_agente':5,
-	                    'dia_cero':dia_cero
+	                    'area':5,#200,
+	                    'inds_x_agente':500,
+	                    'dia_cero':dia_cero,
+	                    'prop_inf_suscep': args[5]
 	                }
 	modelo = Modelo(Mundo, Individuo_2,
 	                modelo_params,
@@ -66,12 +67,13 @@ def error(*args):
 
 
 ag=AG(deb=True)
-ag.parametros(Nind=20,Ngen=50,optim=0, pres=0.001, procesos = 16)
+ag.parametros(Nind=2,Ngen=10,optim=0, pres=0.001, procesos = 16)
 ag.variables(variables=[['evitar_agentes', 0, 1],
 	                    ['prob_movimiento', 0.01, 0.5],#0.5,
 	                    ['frac_mov_nodos', 0.001, 0.3], #0.01,
 	                    ['prob_contagiar', 0.001, 0.4], #0.2,
-	                    ['prob_infectarse', 0.001, 0.4] #0.1,
+	                    ['prob_infectarse', 0.001, 0.4], #0.1,
+	                    ['prop_inf_suscep', 0, 4]
 	                    ])
 
 
@@ -85,6 +87,7 @@ with open('resultados/resAG1.pk', 'wb') as f:
 print('Los resultados son:')
 
 for val, tipo in zip(res[0],['evitar_agentes','prob_movimiento',
-						'frac_mov_nodos','prob_contagiar','prob_infectarse']):
+						'frac_mov_nodos','prob_contagiar','prob_infectarse','prop_inf_suscep']):
 	print(f'{tipo}: {val}')
 print(f'Valor más pequeño de la función objetivo: {res[1]}')
+

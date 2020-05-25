@@ -4,6 +4,7 @@
 from Ambiente.ambiente import Mundo
 from Individuos.individuo import Individuo_2
 from modelos import Modelo
+import datetime
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -30,7 +31,8 @@ attrs_individuos = {#De comportamiento
                     }
 modelo_params = {
                     'area':175,
-                    'inds_x_agente':5
+                    'inds_x_agente':5,
+                    'dia_cero': datetime.datetime(2020,4,17)
                 }
 
 print(f'\nAjustes seleccionados:')
@@ -44,6 +46,7 @@ for arg in args:
 modelo = Modelo(Mundo, Individuo_2,
                 modelo_params,
                 atributos)
+
 modelo.correr(args['n_pasos'])
 data = modelo.datacollector.get_model_vars_dataframe()
 data.to_pickle(args['salida'])
