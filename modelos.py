@@ -171,6 +171,7 @@ class Modelo(Model):
                 #print('%d%% ... '%(int(i/n_steps*100)), end = '')
         #print('100%')
 
+
 if __name__=='__main__':
     from Ambiente.ambiente import Mundo
     from Individuos.individuo import Individuo_2

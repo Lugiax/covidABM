@@ -12,8 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, TextBox
 import mplcursors
+import datetime
 from collections import OrderedDict
-from utils import convertir_corrida
+from utils import convertir_corrida, leer_historico, calcular_error
 
 
 class Visualizador():
@@ -28,11 +29,17 @@ class Visualizador():
             self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
             self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
 
+        self.dia_cero = datetime.datetime(2020,4,17)
+        self.ind_x_agente = 5
+
         self.datos = convertir_corrida(path)
-        
+        hist = leer_historico(solo_activos = True,
+                              ind_x_agente = self.ind_x_agente)
+        self.hist = hist.iloc[:, hist.columns.get_level_values(0)>=self.dia_cero]
+
         self.edos_salud = 'Suceptibles','Expuestos','Infectados','Recuperados'
         self.tamano_ventana = 50
-        self.region_part = 'Valladolid'
+        self.region_part = 'Mérida'
         self.t = 0
         self.t_final = self.datos.shape[0]
         
@@ -65,6 +72,7 @@ class Visualizador():
         self.mapa_scatter = self.ax_mapa.scatter(estado[:,0], estado[:,1],
                                    s = estado[:,2], c = estado[:,3],
                                    cmap = plt.get_cmap('cool'))
+        self.ax_mapa.axis('off')
         cursor_mapa = mplcursors.cursor(self.mapa_scatter, hover=True)
         @cursor_mapa.connect("add")
         def _(sel):
@@ -76,29 +84,56 @@ class Visualizador():
                                     f'E: {int(self.datos.loc[self.t, tar_nom]["E"])}\n'
                                     f'I: {int(self.datos.loc[self.t, tar_nom]["I"])}\n'
                                     f'R: {int(self.datos.loc[self.t, tar_nom]["R"])}')
-        
-        intervalo = np.arange(0,self.t_final)   
+
+
+        intervalo = np.arange(0,self.t_final)
+        intervalo_hist = np.arange(0, self.hist.shape[1])
+        n_dias = max(len(intervalo), len(intervalo_hist))
+        un_dia = datetime.timedelta(days = 1)
+        xticks = [(self.dia_cero+un_dia*d).strftime('%d/%m')
+                    for d in range(0, n_dias, 5)]
+  
         ## General
         datos_gen = self.datos['Total']
-        self.scat_gen = {'S':None, 'E':None, 'I':None, 'R':None}
+        datos_hist = self.hist.values.sum(axis=0)
+        self.scat_gen = {'S':None, 'E':None, 'I':None, 'R':None, 'Activos':None}
+        maximo_gen = datos_hist.max()
         for val in self.scat_gen.keys():
-            if val in ['S','E','I','R']:
+            if val in ['E','I']:
                 self.scat_gen[val] = self.ax_gen.plot(intervalo, datos_gen[val], label= val)
+                maximo_gen = max(maximo_gen, datos_gen[val].max())
+            elif val == 'Activos':
+                self.scat_gen[val] = self.ax_gen.plot(intervalo_hist, datos_hist,
+                                                    label=val)
         self.ax_gen.legend(loc='upper center', ncol=4, fontsize = 'x-small')
-        self.ax_gen.set_xlim(0,self.tamano_ventana)
-        self.ax_gen.set_ylim(0,datos_gen.values.max())
+        self.ax_gen.set_xlim(0, self.tamano_ventana)
+        self.ax_gen.set_ylim(0, maximo_gen)
+        self.ax_gen.set_xlabel(f'Días a partir del día cero: {self.dia_cero.strftime("%d/%m")}')
+        self.ax_gen.set_xticks(np.arange(n_dias, step=5, dtype=np.uint))
+        self.ax_gen.set_xticklabels(xticks)
+        self.ax_gen.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.gen_vline = self.ax_gen.axvline(self.t)
         self.ax_gen.set_title('Avance general')
         
         ##Particular
         datos_part = self.datos[self.region_part]#[0]
-        self.scat_part = {'S':None, 'E':None, 'I':None, 'R':None}
+        hist_part = self.hist.loc[self.region_part].values
+        self.scat_part = {'S':None, 'E':None, 'I':None, 'R':None, 'Activos':None}
+        maximo_part = hist_part.max()
         for val in self.scat_part.keys():
-            if val in ['S','E','I','R']:
+            if val in ['E','I']:
                 self.scat_part[val] = self.ax_part.plot(intervalo, datos_part[val], label= val)
+                maximo_part = max(maximo_part, datos_part[val].max())
+            elif val == 'Activos':
+                self.scat_part[val] = self.ax_part.plot(intervalo_hist, hist_part,
+                                                    label = val)
         self.ax_part.legend(loc='upper center', ncol=4, fontsize = 'x-small')
-        self.ax_part.set_xlim(0,self.tamano_ventana)
-        self.ax_part.set_ylim(0,datos_part.values.max())
+        self.ax_part.set_xlim(0, self.tamano_ventana)
+        self.ax_part.set_ylim(0, maximo_part)
+        self.ax_part.set_xticks(np.arange(n_dias, step=5, dtype=np.uint))
+        self.ax_part.set_xticklabels(xticks)
+        self.ax_part.set_xlabel(f'Días a partir del día cero: {self.dia_cero.strftime("%d/%m")}')
+        self.ax_part.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.part_vline = self.ax_part.axvline(self.t)
         self.ax_part.set_title('Avance del nodo:')
         
@@ -173,6 +208,7 @@ class Visualizador():
                                   self.tamanos[region], infectados])
         return(estado)
 
+"""
     def leer_corrida(path):
         corrida = pd.read_pickle(path)
         totales = corrida.iloc[:,:5].values
@@ -193,7 +229,7 @@ class Visualizador():
         df_cont= pd.DataFrame(conteos, columns = conteos_cols)
         datos = pd.concat((df_tot, df_cont), axis = 1)
         self.datos = datos.groupby([('Total', 'Dia')]).mean()
-        
+"""        
         
 
 def norm_coord(coord):
