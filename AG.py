@@ -6,6 +6,7 @@ Algorítmo Genético con variables múltiples
 """
 
 import time
+import datetime
 from math import log
 import random as rnd
 from binstr import b_bin_to_gray, b_gray_to_bin
@@ -263,7 +264,7 @@ class AG(object):
                 
                 #if self.deb and gen%int(self.Ngen*.1)==1:print 'Generacion:{}'.format(gen)
                 ##Se hace una prueba de rigidez, para ver si ha avanzado el algoritmo
-                if gen%int(self.Ngen*.3)==1:
+                if (gen/self.Ngen*100)%30==1:
                     if optimxgen and optimxgen==mejor[1]:
                         if self.deb: print('Se rompe en',optimxgen)
                         break

@@ -10,7 +10,6 @@ from networkx import MultiDiGraph
 import networkx as nx
 from mesa import Agent, Model
 from mesa.space import MultiGrid
-from random import gauss, random, sample, choice, choices, randrange, shuffle
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -50,15 +49,15 @@ class Mundo(MultiDiGraph):
         for i in range(N):
             agente = self.agent_object(ids[i], self.model)
 
-            attrs['sexo'] = 'h' if random()<=self.porcentaje_hombres else 'm'
+            attrs['sexo'] = 'h' if self.model.rand.random()<=self.porcentaje_hombres else 'm'
 
-            edad = gauss(25,20)
+            edad = self.model.rand.gauss(25,20)
             if edad < 0:
                 attrs['edad'] = 0
             elif edad > 90:
                 attrs['edad'] = 90
 
-            if random()<self.p_asintomatico:
+            if self.model.rand.random()<self.p_asintomatico:
                 attrs['asintomatico'] = True
             else: 
                 attrs['asintomatico'] = False
@@ -85,20 +84,20 @@ class Mundo(MultiDiGraph):
         contador_nodos = 0
         while len(hombres)>0 or len(mujeres)>0:
             a_agregar = []
-            matrimonio = random() < self.p_matrimonio
+            matrimonio = self.model.rand.random() < self.p_matrimonio
             ##Se asignan primero los jefes de familia (hombre y/o mujer)
             if len(hombres)*len(mujeres)>0 and matrimonio:
                 a_agregar.append(hombres.pop())
                 a_agregar.append(mujeres.pop())
             else:
-                seleccion = sample([hombres, mujeres], 2)
+                seleccion = self.model.rand.sample([hombres, mujeres], 2)
                 if len(seleccion[0])>0:
                     a_agregar.append(seleccion[0].pop())
                 else:
                     a_agregar.append(seleccion[1].pop())
             
             ##Se asignan los hijos a cada casa
-            n_hijos = abs(int(gauss(self.promedio_hijos, 0.5)))
+            n_hijos = abs(int(self.model.rand.gauss(self.promedio_hijos, 0.5)))
             while len(hijos)>0 and n_hijos>0:
                 a_agregar.append(hijos.pop())
                 n_hijos-=1
@@ -116,7 +115,7 @@ class Mundo(MultiDiGraph):
         while len(hijos) > 0:
             hijo = hijos.pop()
             while True:
-                idcasa = choice(list(self.nodes))
+                idcasa = self.model.rand.choice(list(self.nodes))
                 espacio_casa = self.nodes[idcasa]['espacio']
                 if len(espacio_casa.empties) == 0 :
                     continue
@@ -160,7 +159,7 @@ class Mundo(MultiDiGraph):
         #Cómo colocar a los individuos
         if ind_pos_def=='vacios': 
             disponibles = espacio.empties[::]
-            shuffle(disponibles)
+            self.model.rand.shuffle(disponibles)
             
         
         for i in ocupantes:
@@ -175,7 +174,8 @@ class Mundo(MultiDiGraph):
                 i_pos = disponibles.pop()
             elif ind_pos_def=='aleatorio':
                 #print('Aleatorios')
-                i_pos = (randrange(tamano), randrange(tamano))
+                i_pos = (self.model.rand.randrange(tamano),
+                        self.model.rand.randrange(tamano))
             espacio.place_agent(i, i_pos)
         
         
@@ -201,8 +201,8 @@ class Mundo(MultiDiGraph):
         self.nodes[ind.nodo_actual]['espacio'].remove_agent(ind)
         nuevo_espacio= self.nodes[nuevo_nodo_id]['espacio']
         if not pos:
-            pos = (randrange(nuevo_espacio.width),
-                   randrange(nuevo_espacio.height))
+            pos = (self.model.rand.randrange(nuevo_espacio.width),
+                   self.model.rand.randrange(nuevo_espacio.height))
         nuevo_espacio.place_agent(ind, pos)
         ind.nodo_actual = nuevo_nodo_id
     
@@ -258,7 +258,7 @@ class Mundo(MultiDiGraph):
         espacio = self.obtener_espacio(ind)
         
         if not evitar_agentes and not evitar_sintomaticos:
-            paso_x, paso_y = choices(list(range(-radio,radio+1)), k=2)
+            paso_x, paso_y = self.model.rand.choices(list(range(-radio,radio+1)), k=2)
             nueva_x = x + paso_x
             nueva_y = y + paso_y
             nueva_x, nueva_y = self.ajustar_posicion((nueva_x, nueva_y),
@@ -269,7 +269,7 @@ class Mundo(MultiDiGraph):
                                                   moore = True,
                                                   include_center = True,
                                                   radius = radio)
-            shuffle(vecindario)
+            self.model.rand.shuffle(vecindario)
             nueva_x, nueva_y = x, y
 
             if evitar_agentes:
