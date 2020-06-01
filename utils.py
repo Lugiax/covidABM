@@ -26,7 +26,7 @@ def leer_historico(solo_activos = False, intervalo = None, ind_x_agente = 1):
 		df = df.iloc[:, df.columns.get_level_values(0)<=dia_final]
 	return df/ind_x_agente
 
-def convertir_corrida(corrida):
+def convertir_corrida(corrida, pasos_por_dia = 4):
 	if isinstance(corrida, str):
 		corrida = pd.read_pickle(corrida)
 	
@@ -35,7 +35,7 @@ def convertir_corrida(corrida):
 	conteos = np.zeros((n_fil, (n_col-5)*4), dtype = np.uint)
 	for i in range(n_fil):
 		for j in range(5,n_col-5):
-			conteos[i, j*4:(j+1)*4] = np.array(corrida.iloc[i, j])
+			conteos[i,j*4:(j+1)*4] = np.array(corrida.iloc[i, j])
 	conteos_cols = pd.MultiIndex.from_product([list(corrida.iloc[:,5:].columns),
                                               ['S','E','I','R']])
 	totales_cols = pd.MultiIndex.from_product([['Total'],
@@ -79,13 +79,14 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	return res.sum(axis=0)
 
 if __name__=='__main__':
-	import datetime
-	dia_cero = datetime.datetime(2020,5,9)
-	dia_final = datetime.datetime(2020,5,18)
+	#import datetime
+	#dia_cero = datetime.datetime(2020,5,9)
+	#dia_final = datetime.datetime(2020,5,18)
 	#print(obtener_movilidad().loc['2020-02-16'])
-	df = leer_historico()
-	print(df[(dia_cero, 'Activos')]['Valladolid'])
+	#df = leer_historico()
+	#print(df[(dia_cero, 'Activos')]['Valladolid'])
 	#fecha = pd.Timestamp('2020-03-17')
 	#print(df.iloc[:, df.columns.get_level_values(1)=='Activos'].values)
 	#corrida = pd.read_pickle('resultados/sim3.pk')
 	#print(calcular_error(corrida, (dia_cero, dia_final)).sum())
+	print(convertir_corrida('resultados/simAG2.pk'))

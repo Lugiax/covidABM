@@ -93,9 +93,9 @@ class Modelo(Model):
                     n_susceptibles -= 1
                     #print(f'\tSe agrega un expuesto ind {ind.unique_id}')
                 """
-
                 self.schedule.add(ind)
-            
+
+            #print(f'La región {region} tiene {len(individuos)}')
             self.mundo.crear_nodo(region, 'municipio',
                                   ocupantes = individuos,
                                   tamano = tamano,

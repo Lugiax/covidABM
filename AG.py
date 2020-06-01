@@ -55,7 +55,9 @@ class AG(object):
     	return(dec)
         
         
-    def parametros(self, pres=None, Nind=None, Ngen=None, prop_cruz=None, prob_mut=None, elit=1, optim=0, tipo_cruz='2p', pruebas=1, procesos=None):
+    def parametros(self, pres=None, Nind=None, Ngen=None, prop_cruz=None,
+                prob_mut=None, elit=1, optim=0, tipo_cruz='2p', pruebas=1,
+                procesos=None, max_opt_gen = None):
         if pres:
             self.dxmax=pres
         if Nind:
@@ -82,6 +84,7 @@ class AG(object):
         self.tipo_cruz=tipo_cruz
         self.elit=elit
         self.pruebas=pruebas
+        self.max_opt_gen = max_opt_gen if max_opt_gen is not None else Ngen
         
     def Fobj(self, f, datos=None): ## Introducir la función a evaluar
         self.f_obj=f
@@ -144,8 +147,8 @@ class AG(object):
         for i in range(N_ind):
             genoma=''
             for j in range(self.nvars):
-                rand=rnd.randrange(0,d_max)
-                genoma+=self.cod(rand)
+                val = self.vars[j][3] if len(self.vars[j])==4 else rnd.randrange(0,d_max)
+                genoma+=self.cod(val)
             #print('Lgenoma',len(genoma))
             pob.append(genoma)
         
@@ -245,7 +248,7 @@ class AG(object):
     def start(self):
         prueba=list()
         for p in range(self.pruebas):
-            optimxgen=None
+            optimxgen = 0 if self.max else 1e10
             ##Creación de individuos!!!!!!!!!!!!!!!!!!!!!
             if self.deb:print('\nCreación de individuos')
             self.pob=self.crearPob()
@@ -259,18 +262,13 @@ class AG(object):
             
         
             if self.deb: print('\nPrueba ',p+1)
-                
+            
             for gen in range(self.Ngen):
                 
                 #if self.deb and gen%int(self.Ngen*.1)==1:print 'Generacion:{}'.format(gen)
-                ##Se hace una prueba de rigidez, para ver si ha avanzado el algoritmo
-                if (gen/self.Ngen*100)%30==1:
-                    if optimxgen and optimxgen==mejor[1]:
-                        if self.deb: print('Se rompe en',optimxgen)
-                        break
-                    optimxgen=mejor[1]
-                    
-                if self.deb and gen%int(self.Ngen*.1)==1:print('\nGeneracion:{} - Fitness:{:.4e}'.format(gen+1,mejor[1]))
+                ##Se hace una prueba de rigidez, para ver si ha avanzado el algoritmo              
+                #if self.deb and gen%int(self.Ngen*.1)==1
+                
                 #print(fit)
                 
                 #print("\nCruzamiento")
@@ -295,9 +293,25 @@ class AG(object):
                 mejor=(self.decodificado(fit[0][1]),fit[0][0])
                 #print 'Mejor:',mejor
                 #if self.deb and gen%int(self.Ngen*.1)==0:print('Mejor Individuo:',fit[0][0],' vars=',mejor[0],' f=',mejor[1] )
+                if self.deb:print('\nGeneracion:{} - Fitness:{:.4e}'.format(gen+1,mejor[1]))
+                if self.deb:
+                    print('El mejor individuo tiene las propiedades:')
+                    for var, val in zip(self.vars, mejor[0]):
+                        print(f'{var[0]} : {val}')
+                    print(f'Valor de la función objetivo: {mejor[1]}')
 
+                if optimxgen==mejor[1]:
+                    self.max_opt_gen-=1
+                    if self.max_opt_gen==0:
+                        if self.deb: print(f'Se rompe en la generacion {gen+1} con {optimxgen}')
+                        #Se alcanzaron las iteraciones máximas con el ḿismo óptimo
+                        break
+                optimxgen=mejor[1]
             
             prueba.append(mejor)
+            
+
+
         
         prueba=sorted(prueba, key=lambda p: p[1])
 
@@ -322,17 +336,14 @@ if __name__=='__main__':
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
 
-    ag=AG()
-    ag.parametros(Nind=100,Ngen=1000,optim=0)
-    ag.variables(variables=[['x',-15,15],
-                            ['y',-15,15]])
+    ag=AG(deb=True)
+    ag.parametros(Nind=16,Ngen=100,optim=0, max_opt_gen = 50, prob_mut = 0.01)
+    ag.variables(variables=[['x',-15,15, 0],
+                            ['y',-15,15, 0]])
 
     
     ag.Fobj(f)
     t1=time.time()
     res=ag.start()
-    print('Tiempo de cómputo {:.4e}'.format(time.time()-t1))
-    print(res)
-
     
-    plt.show()
+    #plt.show()

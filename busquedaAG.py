@@ -22,20 +22,20 @@ def error(*args):
 
 	#print(f'Dia cero {dia_cero}, dia final {dia_final}. Dias totales {n_dias}')
 	attrs_individuos = {#De comportamiento
-	                    'evitar_agentes': False if args[0]<0.5 else True,
+	                    'evitar_agentes': False,
 	                    'distancia_paso': 1,
-	                    'prob_movimiento': args[1],#0.5,
-	                    'frac_mov_nodos': args[2], #0.01,
+	                    'prob_movimiento': args[0],#0.5,
+	                    'frac_mov_nodos': args[1], #0.01,
 	                    #Ante la enfermedad
-	                    'prob_contagiar': args[3], #0.2,
-	                    'prob_infectarse': args[4], #0.1,
+	                    'prob_contagiar': args[2], #0.2,
+	                    'prob_infectarse': args[3], #0.1,
 	                    'radio_de_infeccion': 1
 	                    }
 	modelo_params = {
 	                    'area':200,
 	                    'inds_x_agente':5,
 	                    'dia_cero':dia_cero,
-	                    'expuestos_iniciales': int(args[5])
+	                    'expuestos_iniciales': int(args[4])
 	                }
 	modelo = Modelo(Mundo, Individuo_2,
 	                modelo_params,
@@ -52,9 +52,10 @@ def error(*args):
 
 
 
-ag=AG(deb=False)
-ag.parametros(Nind=10,Ngen=20,optim=0, pres=0.01, procesos = 4)
-ag.variables(variables=[['evitar_agentes', 0, 1],
+ag=AG(deb=True)
+ag.parametros(Nind=16,Ngen=20,optim=0, pres=0.01, procesos = 4,
+			max_opt_gen = 10, prob_mut = 0.1)
+ag.variables(variables=[
 	                    ['prob_movimiento', 0.01, 1],#0.5,
 	                    ['frac_mov_nodos', 0.01, 1], #0.01,
 	                    ['prob_contagiar', 0.1, 1], #0.2,
