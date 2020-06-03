@@ -147,7 +147,10 @@ class AG(object):
         for i in range(N_ind):
             genoma=''
             for j in range(self.nvars):
-                val = self.vars[j][3] if len(self.vars[j])==4 else rnd.randrange(0,d_max)
+                if i==-1 and len(self.vars[j])==4:
+                    val = int(self.vars[j][3]/self.dxmax)
+                else: 
+                    val = rnd.randrange(0,d_max)
                 genoma+=self.cod(val)
             #print('Lgenoma',len(genoma))
             pob.append(genoma)
@@ -337,9 +340,9 @@ if __name__=='__main__':
     ax.set_ylabel('Y')
 
     ag=AG(deb=True)
-    ag.parametros(Nind=16,Ngen=100,optim=0, max_opt_gen = 50, prob_mut = 0.01)
-    ag.variables(variables=[['x',-15,15, 0],
-                            ['y',-15,15, 0]])
+    ag.parametros(Nind=16,Ngen=100,optim=0, max_opt_gen = 10, prob_mut = 0.01)
+    ag.variables(variables=[['x',-15,15, 0.15],
+                            ['y',-15,15, 14.3]])
 
     
     ag.Fobj(f)
