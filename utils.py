@@ -26,24 +26,29 @@ def leer_historico(solo_activos = False, intervalo = None, ind_x_agente = 1):
 		df = df.iloc[:, df.columns.get_level_values(0)<=dia_final]
 	return df/ind_x_agente
 
-def convertir_corrida(corrida, pasos_por_dia = 4):
+def convertir_corrida(corrida):
 	if isinstance(corrida, str):
 		corrida = pd.read_pickle(corrida)
-	
-	totales = corrida.iloc[:,:5].values
+
+	totales = corrida.iloc[:,1:5].values
+	fechas = corrida.iloc[:,0].values
 	n_fil, n_col = corrida.shape
 	conteos = np.zeros((n_fil, (n_col-5)*4), dtype = np.uint)
 	for i in range(n_fil):
-		for j in range(5,n_col-5):
-			conteos[i,j*4:(j+1)*4] = np.array(corrida.iloc[i, j])
-	conteos_cols = pd.MultiIndex.from_product([list(corrida.iloc[:,5:].columns),
+		for j, reg in enumerate(corrida.columns.values[5:]):
+			#if i==0:
+			#	print(i,j, reg)
+			conteos[i,j*4:(j+1)*4] = np.array(corrida.loc[i, reg])
+	conteos_cols = pd.MultiIndex.from_product([corrida.iloc[:,5:].columns.values,
                                               ['S','E','I','R']])
 	totales_cols = pd.MultiIndex.from_product([['Total'],
-                                              ['Fecha','S','E','I','R']])
+                                              ['S','E','I','R']])
 	df_tot = pd.DataFrame(totales, columns = totales_cols)
 	df_cont= pd.DataFrame(conteos, columns = conteos_cols)
-	datos = pd.concat((df_tot, df_cont), axis = 1)
-	datos = datos.groupby([('Total', 'Fecha')]).mean()
+	df_fechas = pd.DataFrame(fechas, columns = [('Fecha', 'fecha')])
+	datos = pd.concat((df_tot, df_cont, df_fechas), axis = 1)
+	#import pdb; pdb.set_trace()
+	datos = datos.groupby([('Fecha', 'fecha')]).mean()
 	return datos
 
 def calcular_error(simu, intervalo, inds_x_agente = 5):
@@ -89,4 +94,4 @@ if __name__=='__main__':
 	#print(df.iloc[:, df.columns.get_level_values(1)=='Activos'].values)
 	#corrida = pd.read_pickle('resultados/sim3.pk')
 	#print(calcular_error(corrida, (dia_cero, dia_final)).sum())
-	print(convertir_corrida('resultados/simAG2.pk'))
+	print(convertir_corrida('resultados/simmanual1.pk'))
