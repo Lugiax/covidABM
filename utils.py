@@ -29,16 +29,18 @@ def leer_historico(solo_activos = False, intervalo = None, ind_x_agente = 1):
 def convertir_corrida(corrida):
 	if isinstance(corrida, str):
 		corrida = pd.read_pickle(corrida)
-
+	corrida.reset_index(drop=True, inplace=True)
 	totales = corrida.iloc[:,1:5].values
 	fechas = corrida.iloc[:,0].values
 	n_fil, n_col = corrida.shape
 	conteos = np.zeros((n_fil, (n_col-5)*4), dtype = np.uint)
+	#import pdb; pdb.set_trace()
 	for i in range(n_fil):
 		for j, reg in enumerate(corrida.columns.values[5:]):
-			#if i==0:
-			#	print(i,j, reg)
-			conteos[i,j*4:(j+1)*4] = np.array(corrida.loc[i, reg])
+			try:
+				conteos[i,j*4:(j+1)*4] = np.array(corrida.loc[i, reg])
+			except:
+				print(f'Error en {i}, {j}, {reg}')
 	conteos_cols = pd.MultiIndex.from_product([corrida.iloc[:,5:].columns.values,
                                               ['S','E','I','R']])
 	totales_cols = pd.MultiIndex.from_product([['Total'],
@@ -55,7 +57,9 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	"""
 	Requiere los datos de la simulación, sin tratar
 	el intervalo de tiempo (dia_cero, dia_final) (datetime)
-	el número de individuos por agemte
+	el número de individuos por agente.
+	
+	Devuelve una dataframe del error por día por municipio
 	"""
 	dia_cero, dia_final = intervalo
 	un_dia = datetime.timedelta(days = 1)
@@ -78,20 +82,20 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	simu = simu.loc[simu.index.isin(list(hist.index))]
 
 	muns = list(simu.index)
-	res = np.zeros(simu.shape)
+	res = np.zeros(simu.shape) 
 	for i, mun in enumerate(muns):
 	    res[i] = (hist.loc[mun].values/inds_x_agente-simu.loc[mun].values)**2
-	return res.sum(axis=0)
+	return pd.DataFrame(res, index=simu.index, columns=simu.columns)
 
 if __name__=='__main__':
-	#import datetime
-	#dia_cero = datetime.datetime(2020,5,9)
-	#dia_final = datetime.datetime(2020,5,18)
+	import datetime
+	dia_cero = datetime.datetime(2020,4,17)
+	dia_final = datetime.datetime(2020,4,27)
 	#print(obtener_movilidad().loc['2020-02-16'])
 	#df = leer_historico()
 	#print(df[(dia_cero, 'Activos')]['Valladolid'])
 	#fecha = pd.Timestamp('2020-03-17')
 	#print(df.iloc[:, df.columns.get_level_values(1)=='Activos'].values)
-	#corrida = pd.read_pickle('resultados/sim3.pk')
-	#print(calcular_error(corrida, (dia_cero, dia_final)).sum())
-	print(convertir_corrida('resultados/simmanual1.pk'))
+	corrida = pd.read_pickle('resultados/simAGprueba1.pk')
+	print(calcular_error(corrida, (dia_cero, dia_final)).sum(axis=1))
+	#print(convertir_corrida('resultados/simmanual1.pk'))
