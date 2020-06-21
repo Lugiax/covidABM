@@ -15,14 +15,18 @@ import mplcursors
 import datetime
 from collections import OrderedDict
 from utils import convertir_corrida, leer_historico, calcular_error
+import os
 
 
 class Visualizador():
-    def __init__(self, path, figsize = (15,8)):
+    def __init__(self, path, ver=['S','E','I','R'], figsize = (15,8)):
         plt.ion()
         self.fig = plt.figure(constrained_layout = True,
                               figsize = figsize)
-
+        
+        self.fig.suptitle(f'{os.path.split(path)[-1]}',
+                            fontsize=16)
+        self.ver = ver
         with open('Datos/datos.pk', 'rb') as f:
             regiones = pk.load(f)
             self.nom_mun = list(regiones.keys())
@@ -30,14 +34,17 @@ class Visualizador():
             self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
 
         
-        self.ind_x_agente = 100
+        self.ind_x_agente = 5
         self.datos = convertir_corrida(path)
 
         self.dias = self.datos.index
         self.hist = leer_historico(solo_activos = True,
                               intervalo = (self.dias[0], self.dias[-1]),
                               ind_x_agente = self.ind_x_agente)
-
+        dias_validos = self.hist.columns.get_level_values(0)
+        self.error = calcular_error(path, (dias_validos[0], dias_validos[-1]),
+                                    self.ind_x_agente)
+        
         self.region_part = 'Mérida'
         self.fecha = self.dias[0]
         self.t_final = len(self.dias)
@@ -57,7 +64,7 @@ class Visualizador():
         datos_hist = self.hist.sum(axis=0)
         self.scat_gen = {'S':None, 'E':None, 'I':None, 'R':None, 'Activos':None}
         for val in self.scat_gen.keys():
-            if val in ['E','I']:
+            if val in self.ver:
                 #datos_gen = self.datos.iloc[:,
                 #            self.datos.columns.get_level_values(1)==val].sum(axis=1)
                 if val=='I': 
@@ -76,14 +83,14 @@ class Visualizador():
         #self.ax_gen.set_xlabel(f'Días a partir del día cero: {self.dias[0].strftime("%d/%m")}')
         self.ax_gen.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.gen_vline = self.ax_gen.axvline(self.ax_gen.get_xticks()[0])
-        self.ax_gen.set_title('Avance general')
+        self.ax_gen.set_title(f'Avance general. Error: {self.error.to_numpy().sum()}')
         
         ##Particular
         datos_part = self.datos[self.region_part]#[0]
         hist_part = self.hist.loc[self.region_part]
         self.scat_part = {'S':None, 'E':None, 'I':None, 'R':None, 'Activos':None}
         for val in self.scat_part.keys():
-            if val in ['E','I']:
+            if val in self.ver:
                 self.scat_part[val] = self.ax_part.plot_date(self.dias,
                                                             datos_part[val],
                                                             fmt='-',
@@ -97,7 +104,8 @@ class Visualizador():
         #self.ax_part.set_xlabel(f'Días a partir del día cero: {self.dias[0].strftime("%d/%m")}')
         self.ax_part.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.part_vline = self.ax_part.axvline(self.ax_gen.get_xticks()[0])
-        self.ax_part.set_title(f'Avance del nodo {self.region_part}')
+        self.ax_part.set_title(f'Avance del nodo {self.region_part}.'
+                                f'Error: {self.error.loc[self.region_part].sum()}')
 
         ## El mapa!!!!
         estado = self.obtener_estado_mapa()
@@ -178,4 +186,8 @@ if __name__=='__main__':
     import sys
     path = sys.argv[1]
     print(f'Leyendo archivo en {path}')
-    vis = Visualizador(path)
+    if sys.argv[2]:
+        ver = sys.argv[2].split(',')
+        vis = Visualizador(path, ver=ver)
+    else:
+        vis = Visualizador(path)

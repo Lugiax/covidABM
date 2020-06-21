@@ -164,7 +164,7 @@ class Modelo(Model):
                 else:
                     infectados[datos[1]] = int(datos[5])
         return infectados
-                
+         
     def step(self):
         self.dia = self.n_paso//self.pp_dia #es el momento del dia
 

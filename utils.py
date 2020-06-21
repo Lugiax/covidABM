@@ -59,8 +59,10 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	el intervalo de tiempo (dia_cero, dia_final) (datetime)
 	el número de individuos por agente.
 	
-	Devuelve una dataframe del error por día por municipio
+    Devuelve una dataframe del error por día por municipio
 	"""
+	if isinstance(simu, str):
+		simu = pd.read_pickle(simu)
 	dia_cero, dia_final = intervalo
 	un_dia = datetime.timedelta(days = 1)
 	n_dias = int((dia_final-dia_cero)/un_dia)+1
