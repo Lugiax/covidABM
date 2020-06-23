@@ -14,7 +14,7 @@ from matplotlib.widgets import Slider, Button, TextBox
 import mplcursors
 import datetime
 from collections import OrderedDict
-from utils import convertir_corrida, leer_historico, calcular_error
+from utils import convertir_corrida, leer_historico, calcular_error, AnalizadorMunicipios
 import os
 
 
@@ -27,11 +27,16 @@ class Visualizador():
         self.fig.suptitle(f'{os.path.split(path)[-1]}',
                             fontsize=16)
         self.ver = ver
-        with open('Datos/datos.pk', 'rb') as f:
-            regiones = pk.load(f)
-            self.nom_mun = list(regiones.keys())
-            self.posiciones = {k:norm_coord(regiones[k]['centro']) for k in regiones}
-            self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
+
+        self.DatosMun = AnalizadorMunicipios()
+        self.nom_mun = self.DatosMun.municipios
+        self.posiciones = self.DatosMun.obtener_coordenadas()
+        self.tamanos = self.DatosMun.obtener_densidad()
+        #with open('Datos/datos.pk', 'rb') as f:
+        #    regiones = pk.load(f)
+        #    self.nom_mun = list(regiones.keys())
+        #     = {k:norm_coord(regiones[k]['centro']) for k in regiones}
+        #    self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
 
         
         self.ind_x_agente = 5
@@ -46,6 +51,7 @@ class Visualizador():
                                     self.ind_x_agente)
         
         self.region_part = 'Mérida'
+        self.region_part_num = self.DatosMun.obtener_numero(self.region_part)
         self.fecha = self.dias[0]
         self.t_final = len(self.dias)
         self.max_inf = 1 #Número máximo de infectados, se actualiza más tarde
@@ -83,11 +89,11 @@ class Visualizador():
         #self.ax_gen.set_xlabel(f'Días a partir del día cero: {self.dias[0].strftime("%d/%m")}')
         self.ax_gen.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.gen_vline = self.ax_gen.axvline(self.ax_gen.get_xticks()[0])
-        self.ax_gen.set_title(f'Avance general. Error: {self.error.to_numpy().sum()}')
+        self.ax_gen.set_title(f'Avance general.')# Error: {self.error.to_numpy().sum()}')
         
         ##Particular
         datos_part = self.datos[self.region_part]#[0]
-        hist_part = self.hist.loc[self.region_part]
+        hist_part = self.hist.loc[self.region_part_num]
         self.scat_part = {'S':None, 'E':None, 'I':None, 'R':None, 'Activos':None}
         for val in self.scat_part.keys():
             if val in self.ver:
@@ -104,8 +110,8 @@ class Visualizador():
         #self.ax_part.set_xlabel(f'Días a partir del día cero: {self.dias[0].strftime("%d/%m")}')
         self.ax_part.set_ylabel(f'Agentes ({self.ind_x_agente} individuos reales por agente)')
         self.part_vline = self.ax_part.axvline(self.ax_gen.get_xticks()[0])
-        self.ax_part.set_title(f'Avance del nodo {self.region_part}.'
-                                f'Error: {self.error.loc[self.region_part].sum()}')
+        self.ax_part.set_title(f'Avance del nodo {self.region_part}.')
+                                #f'Error: {self.error.loc[self.region_part].sum()}')
 
         ## El mapa!!!!
         estado = self.obtener_estado_mapa()
@@ -164,22 +170,16 @@ class Visualizador():
         estado = np.zeros((len(self.nom_mun), 4)) #x, y, tamaño, color
         #import pdb; pdb.set_trace()
         for j, region in enumerate(self.nom_mun):
-            coord = self.posiciones[region]
+            region_num = self.DatosMun.obtener_numero(region)
+            coord = self.posiciones.loc[region_num]
             infectados = self.datos.loc[self.fecha, (region, 'I')]
             #rint(region, coord, infectados, self.datos.loc[self.fecha,(region, 'S')])
-            estado[j] = np.array([coord[0], coord[1],
-                                  self.tamanos[region], infectados])
+            estado[j] = np.array([coord[1], coord[0],
+                                  self.tamanos.loc[region_num], infectados])
 
         return(estado)
 
-       
-
-def norm_coord(coord):
-    coord = np.array(coord)[::-1]
-    esq1 = np.array([-89.891994, 20.160681])
-    esq2 = np.array([-88.986827, 21.288735])
-    delta = esq2-esq1
-    return (coord-esq1)/delta
+    
 
 
 if __name__=='__main__':
