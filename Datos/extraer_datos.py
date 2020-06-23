@@ -1,3 +1,18 @@
+import pandas as pd
+
+datos = pd.read_csv('coordenadas.csv')
+datos = datos.set_index('Num_Mun')
+
+poblacion = pd.read_csv('pob_municipios.csv')
+poblacion = poblacion.set_index('mun')
+
+datos['Poblacion'] = poblacion.Pob_total
+
+print(datos)
+datos.to_pickle('datos_municipios.pk')
+#print(poblacion.head())
+#print(poblacion.columns)
+"""
 import fiona
 import csv
 import pandas as pd
@@ -6,39 +21,41 @@ from collections import OrderedDict
 
 
 datos = {}
-
 #Lectura de los límites
 #with fiona.open('Limites/gadm36_MEX_1.shp') as shape:
 #    for d in shape:
 #        if d['properties']['NAME_1'] == 'Yucatán':
 #            datos['Yucatán'] = {'limites': d['geometry']['coordinates']}
 
-with fiona.open('Limites/gadm36_MEX_2.shp') as shape:
-    print(shape[0]['properties'])
-    for d in shape:
-        if d['properties']['NAME_1'] == 'Yucatán':
-            datos[d['properties']['NAME_2']] = {'limites': d['geometry']['coordinates']}
+#with fiona.open('Limites/gadm36_MEX_2.shp') as shape:
+#    print(shape[0]['properties'])
+#    for d in shape:
+#        if d['properties']['NAME_1'] == 'Yucatán':
+#            datos[d['properties']['NAME_2']] = {'limites': d['geometry']['coordinates']}
 
-lugares = sorted(datos.keys())
-print(lugares)
-print(len(lugares))
+#lugares = sorted(datos.keys())
+#print(lugares)
+#print(len(lugares))
 #Lectura de las coordenadas
 with open('coordenadas.csv', 'r', encoding='utf-8') as f:
     print('Se leen las coordenadas del centro')
     lines = csv.reader(f)
-    contador = 0
+    #contador = 0
     for line in lines:
         ##0:Entidad,1:Num_Ent,2:Municipio,3:Num_Mun,4:lat,5:lon
         if line[0]=='Yucatán':
-            if line[2]=='Dzán': line[2] = 'Dzan'
-            elif line[2]=='Tinum': line[2] = 'Tinúm'
-            elif line[2]=='Tixmehuac': line[2] = 'Tixméhuac'
-            if line[2] in datos.keys():
-                datos[line[2]]['centro'] = (float(line[4]), float(line[5]))
-                datos[line[2]]['num'] = int(line[3])
-                contador+=1
-            else:
-                print(f'\tEl lugar {line[2]} no se encontró')
+            #if line[2]=='Dzán': line[2] = 'Dzan'
+            #elif line[2]=='Tinum': line[2] = 'Tinúm'
+            #elif line[2]=='Tixmehuac': line[2] = 'Tixméhuac'
+            #if line[2] in datos.keys():
+            #    datos[line[2]]['centro'] = (float(line[4]), float(line[5]))
+            #    datos[line[2]]['num'] = int(line[3])
+            #    contador+=1
+            #else:
+            #    print(f'\tEl lugar {line[2]} no se encontró')
+            datos[line[2]] = {'centro': (float(line[4]), float(line[5])),
+                            'num': int(line[3]),
+                            'area': float(line[6])}
 print(f'\tSe han asignado {contador} coordenadas')
 
 
@@ -67,3 +84,4 @@ for ordenado in ordenados:
 
 with open('datos.pk', 'wb') as f:
     pickle.dump(guardar, f)
+"""

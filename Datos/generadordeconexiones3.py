@@ -6,12 +6,9 @@ import numpy as np
 from collections import OrderedDict
 
 
-#Se recupera la 
-with open('datos.pk', 'rb') as f:
-    datos = pk.load(f)
+datos = pd.read_pickle('datos_municipios.pk')
 
-
-municipios = list(datos.keys())
+municipios = datos.Municipios.values
 #municipios = sorted(municipios, key = lambda x: datos[x]['num'])
 #print(municipios)
 n_tot = len(municipios)
