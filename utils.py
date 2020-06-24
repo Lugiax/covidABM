@@ -2,29 +2,95 @@ import pandas as pd
 import numpy as np
 import datetime
 
+
+class AnalizadorMunicipios:
+	def __init__(self, path = 'Datos/datos_municipios.pk'):
+		self.datos = pd.read_pickle(path)
+		self.municipios = self.datos.Municipio.values
+		self.generar_coordenadas()
+		self.datos['densidad'] = np.log2(self.datos.Poblacion / self.datos.area)*9
+
+	def generar_coordenadas(self, norm = True):
+		coord = self.datos[['lat','lon']].values
+		if norm:
+		    #coord = coord[::-1]
+		    esq1 = np.array([19.960423, -90.462547])
+		    esq2 = np.array([21.662516, -87.562156])
+		    delta = esq2-esq1
+		    self.datos['coord'] = [(n1, n2) for n1, n2 in (coord-esq1)/delta]
+		else:
+			self.datos['coord'] = [(n1, n2) for n1, n2 in coord]
+
+	def obtener_densidades(self):
+		return self.datos.densidad
+
+	def obtener_densidad(self, num_o_nom):
+		if isinstance(num_o_nom, str):
+			num_o_nom = self.obtener_numero(num_o_nom)
+		return self.datos.densidad.loc[num_o_nom]
+	
+	def obtener_poblacion(self, num_o_nom):
+		if isinstance(num_o_nom, str):
+			num_o_nom = self.obtener_numero(num_o_nom)
+		return self.datos.Poblacion.loc[num_o_nom]
+
+	def obtener_area(self, num_o_nom):
+		if isinstance(num_o_nom, str):
+			num_o_nom = self.obtener_numero(num_o_nom)
+		return self.datos.area.loc[num_o_nom]
+
+	def obtener_coordenadas(self):
+		return self.datos.coord
+
+	def obtener_nombre(self, num):
+		return self.datos.Municipio.loc[num]
+
+	def obtener_nombres(self, num):
+		return self.datos.Municipio.loc[num]
+
+	def obtener_numero(self, nombre):
+		return self.datos[self.datos.Municipio==nombre].index[0]
+
+	def obtener_numeros(self, nombres):
+		return self.datos.where(self.datos.Municipio in nombres)
+
+
+
+
+
+
+
 def obtener_movilidad(*args):
 	#https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv?cachebust=57b4ac4fc40528e2
 	df = pd.read_csv('Datos/Global_Mobility_Report.csv', sep =',')
 	df = df[df.country_region == 'Mexico']
 	df = df[df.sub_region_1 == 'Yucatan']
-	df['change'] = df.iloc[:,4:].mean(axis=1)
+	df['tot'] = df.iloc[:,4:].mean(axis=1)
 	#df['dias'] = (pd.to_datetime(df.date) - pd.Timestamp('2020-02-15'))/pd.Timedelta('1 day')
 	#return df[['dias','change']].values
 	df = df.set_index('date')
-	return df['change']
+	return df['tot']
 
+def convertir_municipio():
+	datos = pd.read_pickle('Datos/datos_municipios.pk')
+	return datos.Municipio
 
 def leer_historico(solo_activos = False, intervalo = None, ind_x_agente = 1):
 	path = 'Datos/historial.xlsx'
 	df = pd.read_excel(path, header=[0,1]).fillna(np.uint(0))
-	df.set_index(('ENTIDAD','entidad'), inplace=True)
+	df.set_index(('NUM','num'), inplace=True)
+	#df.drop(columns=('ENTIDAD','entidad'), inplace=True)
+	#df = df.astype('uint')
+	#print(df.iloc[: -21])
+	#print(df.head(10))
+	df.iloc[:,1:] = df.iloc[:,1:]/ind_x_agente
 	if solo_activos:
 		df = df.iloc[:, df.columns.get_level_values(1)=='Activos']
 	if intervalo is not None:
 		dia_cero, dia_final = intervalo
 		df = df.iloc[:, df.columns.get_level_values(0)>=dia_cero]
 		df = df.iloc[:, df.columns.get_level_values(0)<=dia_final]
-	return df/ind_x_agente
+	return df
 
 def convertir_corrida(corrida):
 	if isinstance(corrida, str):
@@ -61,14 +127,12 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	
     Devuelve una dataframe del error por día por municipio
 	"""
+	return 0
 	if isinstance(simu, str):
 		simu = pd.read_pickle(simu)
 	dia_cero, dia_final = intervalo
 	un_dia = datetime.timedelta(days = 1)
 	n_dias = int((dia_final-dia_cero)/un_dia)+1
-
-	hist = leer_historico(solo_activos = True,
-						intervalo = (dia_cero, dia_final))
 
 	simu = simu[simu['Fecha']>=dia_cero]
 	simu = simu[simu['Fecha']<=dia_final]
@@ -81,7 +145,10 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 		index = simu.iloc[:,1:].columns.get_level_values(0),
 		columns = simu.index)
 		#list(map(lambda x: dia_cero+un_dia*x, list(simu.index))))
-	simu = simu.loc[simu.index.isin(list(hist.index))]
+
+	hist = leer_historico(solo_activos = True,
+						intervalo = (dia_cero, dia_final))
+	simu = simu.loc[simu.index.isin(list(hist[('ENTIDAD','entidad')]))]
 
 	muns = list(simu.index)
 	res = np.zeros(simu.shape) 
@@ -90,14 +157,30 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 	return pd.DataFrame(res, index=simu.index, columns=simu.columns)
 
 if __name__=='__main__':
-	import datetime
-	dia_cero = datetime.datetime(2020,4,17)
-	dia_final = datetime.datetime(2020,4,27)
+	#import datetime
+	#dia_cero = datetime.datetime(2020,4,17)
+	#dia_final = datetime.datetime(2020,4,27)
 	#print(obtener_movilidad().loc['2020-02-16'])
-	#df = leer_historico()
+	#print(leer_historico())
 	#print(df[(dia_cero, 'Activos')]['Valladolid'])
 	#fecha = pd.Timestamp('2020-03-17')
 	#print(df.iloc[:, df.columns.get_level_values(1)=='Activos'].values)
-	corrida = pd.read_pickle('resultados/simAGprueba1.pk')
-	print(calcular_error(corrida, (dia_cero, dia_final)).sum(axis=1))
+	#corrida = pd.read_pickle('resultados/simAGprueba1.pk')
+	#print(calcular_error(corrida, (dia_cero, dia_final)).sum(axis=1))
 	#print(convertir_corrida('resultados/simmanual1.pk'))
+	#print(obtener_num_municipios().loc[25])
+	AM = AnalizadorMunicipios()
+	print(AM.obtener_nombres([1,2,3]))
+	print('Valladolid: ', AM.obtener_numero('Valladolid'))
+	print('Pob', AM.obtener_poblacion(102))
+	print('Area', AM.obtener_area(102))
+	print('Pob', AM.obtener_poblacion('Valladolid'))
+	print('Area', AM.obtener_area('Valladolid'))
+	print('Dens', AM.obtener_densidad('Valladolid'))
+	dens = AM.obtener_densidades().values
+	print(dens.max())
+	print(dens.min())
+	import matplotlib.pyplot as plt
+
+	plt.hist(dens, bins = 6)
+	plt.show()

@@ -12,7 +12,7 @@ import numpy as np
 import datetime
 import matplotlib.pyplot as plt
 
-from utils import obtener_movilidad, leer_historico
+from utils import obtener_movilidad, leer_historico, AnalizadorMunicipios
 
 class Modelo(Model):
     #Algunas constantes
@@ -29,6 +29,7 @@ class Modelo(Model):
         self.params = params
         self.mundo = world_object(self,agent_object)
         self.movilidad = obtener_movilidad()
+        self.DatosMun = AnalizadorMunicipios()
         self.dia_cero = params['dia_cero']
         #self.prop_inf_exp = params['prop_inf_exp'] #Proporcion entre infectaros y suceptibles a la fecha
         self.un_dia = datetime.timedelta(days=1)
@@ -45,75 +46,42 @@ class Modelo(Model):
                             'Expuestos': self.conteo_func(self.EXPUESTO),
                             'Infectados': self.conteo_func(self.INFECTADO),
                             'Recuperados': self.conteo_func(self.RECUPERADO)}
-        reg_reporters = {k: self.conteo_por_reg(k) for k in self.regiones}
+        reg_reporters = {k: self.conteo_por_reg(k) for k in self.DatosMun.municipios}
         self.datacollector = DataCollector({**model_reporters, **reg_reporters})
         self.conteo_instantaneo = self.conteo()
 
     
     def generar_regiones(self):
-        datos = self.leer_regiones('Datos/datos.pk')
         conexiones = self.generar_lista_de_aristas('Datos/adyacencia.pk',
-                                                   list(datos.keys()))
-        #infectados = self.obtener_infectados('Datos/infectados.csv',
-        #                                     list(datos.keys()))
-        #historico = leer_historico()
-        #infectados = historico[(self.dia_cero, 'Activos')]
-        #fecha = self.params['dia_cero']################################3
-        ids_start=0
-        self.regiones = {}
-        for region in datos:
-            #if region not in seleccionadas: continue
-            self.regiones[region] = datos[region]
-            tamano = self.params['area']
-            pob = ceil(self.regiones[region]['pob']//self.params['inds_x_agente'])
-            ids = [i for i in range(ids_start, ids_start+pob)]
-            ids_start += pob
+                                                    self.DatosMun.municipios)
 
-            individuos = self.mundo.generar_individuos(pob,
+        ids_start=0
+        for region in self.DatosMun.municipios:
+            region_num = self.DatosMun.obtener_numero(region)
+            tamano = int(self.DatosMun.obtener_densidad(region_num))*4
+            n_pob = ceil(self.DatosMun.obtener_poblacion(region_num)//self.params['inds_x_agente'])
+            
+            ids = [i for i in range(ids_start, ids_start+n_pob)]
+            ids_start += n_pob
+
+            individuos = self.mundo.generar_individuos(n_pob,
                                                        ids = ids,
                                                        attrs= self.ind_attrs)
-            """
-            n_infectados = ceil(infectados[region]/self.params['inds_x_agente'])\
-                            if infectados.get(region, None) is not None else 0
-            n_susceptibles = ceil(n_infectados*self.prop_inf_exp)
-            #print(f'{region}: {pob} agentes, {n_infectados} infectados, {n_susceptibles} susceptibles')
-            """
+
             if region=='Mérida':
                 for i in range(self.params['expuestos_iniciales']):
                     individuos[i].salud=self.EXPUESTO
 
             for ind in individuos:
-                """
-                if n_infectados>0:
-                    ind.salud = self.INFECTADO
-                    n_infectados -= 1
-                    #print(f'\tSe agrega un infectado ind {ind.unique_id}')
-                elif n_infectados==0 and n_susceptibles>0:
-                    ind.salud = self.EXPUESTO
-                    n_susceptibles -= 1
-                    #print(f'\tSe agrega un expuesto ind {ind.unique_id}')
-                """
                 self.schedule.add(ind)
 
-            #print(f'La región {region} tiene {len(individuos)}')
+            print(f'La región {region} de tamaño {tamano} tiene {n_pob}')
             self.mundo.crear_nodo(region, 'municipio',
                                   ocupantes = individuos,
                                   tamano = tamano,
                                   ind_pos_def = 'aleatorio'
                                   )
-        #print('Se crean las aristas')
         self.mundo.add_weighted_edges_from(conexiones, weight = 'peso')
-        #print([a.salud for a in self.schedule.agents if a.salud==self.EXPUESTO])
-        #posiciones = {k: list(self.regiones[k]['centro'])[::-1] for k in self.regiones}
-        #self.mundo.visualizar(pos = posiciones, with_labels = True)
-        
-
-    def norm_coord(self, coord):
-        coord = np.array(coord)
-        esq1 = np.array([21.670833, -90.621414])
-        esq2 = np.array([19.546208, -87.449881])
-        delta = esq2-esq1
-        return (coord-esq1)/delta
         
    
     def conteo(self):
@@ -136,11 +104,6 @@ class Modelo(Model):
                 conteo[a.salud]+=1
             return conteo
         return contar
-
-    def leer_regiones(self,path):
-        with open(path, 'rb') as f:
-            datos = pk.load(f)
-        return datos
     
     def generar_lista_de_aristas(self, path, regiones):
         conexiones = []
@@ -153,17 +116,6 @@ class Modelo(Model):
                                for nueva, peso in datos[region]]
                 conexiones.extend(a_agregar)
         return conexiones
-    
-    def obtener_infectados(self, path, regiones):
-        infectados = {}
-        with open(path, 'r') as f:
-            for line in f.readlines()[4:]:
-                datos= line.split(',')
-                if datos[1] not in regiones:
-                    print(f'{datos[1]} no está en regiones')
-                else:
-                    infectados[datos[1]] = int(datos[5])
-        return infectados
          
     def step(self):
         self.dia = self.n_paso//self.pp_dia #es el momento del dia
@@ -221,7 +173,6 @@ if __name__=='__main__':
                     'radio_de_infeccion': 1
                     }
     modelo_params = {
-                    'area':5,
                     'inds_x_agente':500,
                     'dia_cero':dia_cero,
                     'expuestos_iniciales':5
