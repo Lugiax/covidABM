@@ -2,14 +2,7 @@
 # -*- coding: utf-8 -*-
 from mesa import Agent
 
-#Algunas constantes
-SUCEPTIBLE = 0
-EXPUESTO = 1
-INFECTADO = 2
-RECUPERADO = 3
-salud_to_str={0:'Suceptible', 1:'Expuesto', 2:'Infectado', 3:'Recuperado'}
-
-class Individuo_base(Agent):
+class Individuo(Agent):
     
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
@@ -32,6 +25,7 @@ class Individuo_base(Agent):
         self.activar_cuarentena = False ###Cambiar por: activar_cuarentena
         self.quedate_en_casa = False
         self.prob_movimiento = 0.005
+        self.distancia_paso = 1
         ##Atributos de la enfermedad
         ### Pasos para:
         self.dp_infectar = 5
@@ -53,7 +47,27 @@ class Individuo_base(Agent):
         
 
     def step(self):
-        pass
+        self.mundo.siguiente_paso_aleatorio(self, 
+                                            evitar_agentes=self.evitar_agentes,
+                                            evitar_sintomaticos=self.evitar_sintomaticos,
+                                            radio = self.distancia_paso)
+
+        self.interactuar()
+
+        ## Se revisa la evolución de su salud
+        if self.salud == self.model.EXPUESTO:
+            self.pp_infectarse -= 1
+            infectarse = self.pp_infectarse == 0 and self.model.rand.random()<self.prob_infectarse
+            if infectarse:
+                self.salud = self.model.INFECTADO
+            elif self.pp_infectarse == 0:
+                self.salud = self.model.SUSCEPTIBLE
+                self.pp_infectarse = int(self.model.rand.gauss(self.dp_infectar,
+                                       self.dp_infectar_var/2))*self.model.pp_dia
+        elif self.salud == self.model.INFECTADO:
+            self.pp_recuperarse -= 1
+            if self.pp_recuperarse == 0:
+                self.salud = self.model.RECUPERADO
     
     def interactuar(self):
         ## Se selecciona un número de agentes por contagiar de entre los que
@@ -83,10 +97,12 @@ class Individuo_base(Agent):
 
             setattr(self, at, attrs[at])
 
+    def aplicar_medidas(self, medidas = {}):
+        self.establecer_atributos(medidas)
 
 
 #-----------------------------------------------------------------------------
-class Individuo_2(Individuo_base):
+class Individuo_2(Individuo):
     
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
@@ -96,7 +112,7 @@ class Individuo_2(Individuo_base):
         ##Atributos de comportamiento
         self.evitar_sintomaticos = False
         self.distancia_paso = 1
-        self.frac_mov_nodos = 0.1 #porcentaje de movimiento con respecto al movimiento total
+        self.frac_mov_nodos = 0 #porcentaje de movimiento con respecto al movimiento total
    
 
     def step(self):
@@ -159,8 +175,3 @@ class Individuo_2(Individuo_base):
             self.pp_recuperarse -= 1
             if self.pp_recuperarse == 0:
                 self.salud = self.model.RECUPERADO
-        
-        
-
-    def aplicar_medidas(self, medidas = {}):
-        self.establecer_atributos(medidas)

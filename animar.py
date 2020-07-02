@@ -19,7 +19,7 @@ import os
 
 
 class Visualizador():
-    def __init__(self, path, ver=['S','E','I','R'], figsize = (15,8)):
+    def __init__(self, path, ver=['S','E','I','R'], ind_x_agente = 10, figsize = (15,8)):
         plt.ion()
         self.fig = plt.figure(constrained_layout = True,
                               figsize = figsize)
@@ -31,15 +31,9 @@ class Visualizador():
         self.DatosMun = AnalizadorMunicipios()
         self.nom_mun = self.DatosMun.municipios
         self.posiciones = self.DatosMun.obtener_coordenadas()
-        self.tamanos = self.DatosMun.obtener_densidad()
-        #with open('Datos/datos.pk', 'rb') as f:
-        #    regiones = pk.load(f)
-        #    self.nom_mun = list(regiones.keys())
-        #     = {k:norm_coord(regiones[k]['centro']) for k in regiones}
-        #    self.tamanos = {k:max(np.log(regiones[k]['pob'])**2.5,20) for k in regiones}
-
+        self.tamanos = self.DatosMun.obtener_densidades()
         
-        self.ind_x_agente = 5
+        self.ind_x_agente = ind_x_agente
         self.datos = convertir_corrida(path)
 
         self.dias = self.datos.index

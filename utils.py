@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
+import matplotlib.pyplot as plt
 
 
 class AnalizadorMunicipios:
@@ -29,10 +30,13 @@ class AnalizadorMunicipios:
 			num_o_nom = self.obtener_numero(num_o_nom)
 		return self.datos.densidad.loc[num_o_nom]
 	
-	def obtener_poblacion(self, num_o_nom):
-		if isinstance(num_o_nom, str):
+	def obtener_poblacion(self, num_o_nom = None):
+		if num_o_nom is None:
+			return self.datos.Poblacion.sum()
+		elif isinstance(num_o_nom, str):
 			num_o_nom = self.obtener_numero(num_o_nom)
 		return self.datos.Poblacion.loc[num_o_nom]
+
 
 	def obtener_area(self, num_o_nom):
 		if isinstance(num_o_nom, str):
@@ -53,6 +57,28 @@ class AnalizadorMunicipios:
 
 	def obtener_numeros(self, nombres):
 		return self.datos.where(self.datos.Municipio in nombres)
+
+class GraficadorSimple:
+	def __init__(self, data):
+		if isinstance(data, str):
+			self.data = pd.read_pickle(data).groupby('Fecha').mean()
+		else:
+			self.data = data.groupby('Fecha').mean()
+
+	def graficar(self, figsize = (10,5), ind_x_agente = 10):
+		historico = leer_historico(solo_activos = True,
+									ind_x_agente = ind_x_agente)
+		historico = historico.sum(axis=0)
+		fechas_hist = historico.index.get_level_values(0).values
+
+		fig, ax = plt.subplots(figsize = figsize)
+		ax.plot_date(self.data.index.values, self.data.Infectados,
+					'k-', label = 'Infectados sim')
+		ax.plot_date(fechas_hist, historico.values,
+					'r.', label = 'Infectados reales')
+
+		plt.show()
+
 
 
 
@@ -177,10 +203,15 @@ if __name__=='__main__':
 	print('Pob', AM.obtener_poblacion('Valladolid'))
 	print('Area', AM.obtener_area('Valladolid'))
 	print('Dens', AM.obtener_densidad('Valladolid'))
-	dens = AM.obtener_densidades().values
-	print(dens.max())
-	print(dens.min())
-	import matplotlib.pyplot as plt
+	print('Poblacion total', AM.obtener_poblacion())
 
-	plt.hist(dens, bins = 6)
-	plt.show()
+	#dens = AM.obtener_densidades().values
+	#print(dens.max())
+	#print(dens.min())
+	#import matplotlib.pyplot as plt
+
+	#plt.hist(dens, bins = 6)
+	#plt.show()
+
+	G = GraficadorSimple('resultados/simple1.pk')
+	G.graficar()
