@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from Ambiente.ambiente import Mundo
-from Individuos.individuo import Individuo
+#from Ambiente.ambiente import Mundo
+#from Individuos.individuo import Individuo
+from ambiente import Mundo
+from individuo import Individuo
 from modelos import Simple
 import datetime
+import time
 import argparse
 from utils import calcular_error
 
@@ -59,14 +62,19 @@ for k in tot_param:
     print(f'\t\t{k}: {tot_param[k]}')
 
 print('Creando modelo...')
+t0 = time.time()
 modelo = Simple(Mundo, Individuo,
                 mod_param,
                 ind_attrs)
-
+t1 = time.time()
 modelo.correr(args['n_dias']*4, show=True)
+tf = time.time()
 corrida = modelo.datacollector.get_model_vars_dataframe()
 corrida.to_pickle(args['salida'])
 print(f'\tResultados guardados correctamente en {args["salida"]}')
+ts1 = t1-t0
+tsf = (tf-t1)/60
+print(f'Tiempo de configuración {ts1} segundos.\nTiempo de ejecución {tsf} minutos')
 
 #import datetime
 #dia_inicio = datetime.datetime(2020,4,17)
