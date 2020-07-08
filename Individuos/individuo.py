@@ -47,7 +47,10 @@ class Individuo(Agent):
         
 
     def step(self):
-        self.mundo.siguiente_paso_aleatorio(self, 
+        prob_mov = self.prob_movimiento * self.model.porcentaje_movilidad
+        
+        if self.model.rand.random() < prob_mov:
+            self.mundo.siguiente_paso_aleatorio(self, 
                                             evitar_agentes=self.evitar_agentes,
                                             evitar_sintomaticos=self.evitar_sintomaticos,
                                             radio = self.distancia_paso)

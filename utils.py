@@ -81,21 +81,42 @@ class GraficadorSimple:
 
 
 
+class GeneradorMovilidad:
+	def __init__(self, semanal=True,
+	prediccion = True,
+	semanas_a_agregar = 4,
+	valor_de_relleno = None,
+	path='Datos/Global_Mobility_Report.csv',
+	):
+		#from sklearn.neural_network import MLPRegressor 
+		self.semanal = semanal ##Por el momento solo será semanal
+		self.semanas_a_agregar = semanas_a_agregar
+		self.valor_de_relleno = valor_de_relleno
+		self.lectura = self.leer_movilidad(path)
+		self.semana_max = self.lectura.index.values.max()
+		#self.predictor = MLPRegressor((50,), alpha = 0.001) #Para agregar después
 
+	def leer_movilidad(self, path):
+		#https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv?cachebust=57b4ac4fc40528e2
+		df = pd.read_csv(path, sep =',')
+		df = df[df.country_region == 'Mexico']
+		df = df[df.sub_region_1 == 'Yucatan']
+		df['tot'] = df.iloc[:,4:].mean(axis=1)
+		df['weeknumber'] = pd.to_datetime(df.date).apply(lambda x: x.isocalendar()[1])
+		return df.groupby('weeknumber').mean()['tot']
 
+	def generar(self, semana):
+		if semana <= self.semana_max:
+			return self.lectura.loc[semana]
+		else:
+			#self.predictor.fit(self.lectura.index.values, self.lectura.values)
+			nuevas_semanas = [self.semana_max+i+1 for i in range(self.semanas_a_agregar)]
+			self.semana_max = nuevas_semanas[-1]
+			relleno = self.valor_de_relleno if self.valor_de_relleno is not None else self.lectura.values[-1]
+			valores = [relleno for _ in range(self.semanas_a_agregar)]
+			self.lectura = self.lectura.append(pd.Series(valores, index = nuevas_semanas))
+			return relleno
 
-
-
-def obtener_movilidad(*args):
-	#https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv?cachebust=57b4ac4fc40528e2
-	df = pd.read_csv('Datos/Global_Mobility_Report.csv', sep =',')
-	df = df[df.country_region == 'Mexico']
-	df = df[df.sub_region_1 == 'Yucatan']
-	df['tot'] = df.iloc[:,4:].mean(axis=1)
-	#df['dias'] = (pd.to_datetime(df.date) - pd.Timestamp('2020-02-15'))/pd.Timedelta('1 day')
-	#return df[['dias','change']].values
-	df = df.set_index('date')
-	return df['tot']
 
 def convertir_municipio():
 	datos = pd.read_pickle('Datos/datos_municipios.pk')
@@ -186,7 +207,11 @@ if __name__=='__main__':
 	#import datetime
 	#dia_cero = datetime.datetime(2020,4,17)
 	#dia_final = datetime.datetime(2020,4,27)
-	#print(obtener_movilidad().loc['2020-02-16'])
+	mov = GeneradorMovilidad(valor_de_relleno = -45)
+	print(mov.lectura)
+	print(mov.generar(40))
+	print(mov.generar(50))
+	print(mov.generar(60))
 	#print(leer_historico())
 	#print(df[(dia_cero, 'Activos')]['Valladolid'])
 	#fecha = pd.Timestamp('2020-03-17')
@@ -195,15 +220,15 @@ if __name__=='__main__':
 	#print(calcular_error(corrida, (dia_cero, dia_final)).sum(axis=1))
 	#print(convertir_corrida('resultados/simmanual1.pk'))
 	#print(obtener_num_municipios().loc[25])
-	AM = AnalizadorMunicipios()
-	print(AM.obtener_nombres([1,2,3]))
-	print('Valladolid: ', AM.obtener_numero('Valladolid'))
-	print('Pob', AM.obtener_poblacion(102))
-	print('Area', AM.obtener_area(102))
-	print('Pob', AM.obtener_poblacion('Valladolid'))
-	print('Area', AM.obtener_area('Valladolid'))
-	print('Dens', AM.obtener_densidad('Valladolid'))
-	print('Poblacion total', AM.obtener_poblacion())
+	#AM = AnalizadorMunicipios()
+	#print(AM.obtener_nombres([1,2,3]))
+	#print('Valladolid: ', AM.obtener_numero('Valladolid'))
+	#print('Pob', AM.obtener_poblacion(102))
+	#print('Area', AM.obtener_area(102))
+	#print('Pob', AM.obtener_poblacion('Valladolid'))
+	#print('Area', AM.obtener_area('Valladolid'))
+	#print('Dens', AM.obtener_densidad('Valladolid'))
+	#print('Poblacion total', AM.obtener_poblacion())
 
 	#dens = AM.obtener_densidades().values
 	#print(dens.max())
@@ -213,5 +238,5 @@ if __name__=='__main__':
 	#plt.hist(dens, bins = 6)
 	#plt.show()
 
-	G = GraficadorSimple('resultados/simple1.pk')
-	G.graficar()
+	#G = GraficadorSimple('resultados/simple1.pk')
+	#G.graficar()
