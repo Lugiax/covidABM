@@ -172,7 +172,7 @@ class Simple:
         self.ind_attrs = ind_attrs
         self.mundo = world_object(self,agent_object)
         self.movilidad = GeneradorMovilidad(semanas_a_agregar = 8,
-                                            valor_de_relleno = params['p_reduccion_mov'])
+                                            valor_de_relleno = params['reduccion_mov'])
         self.DatosMun = AnalizadorMunicipios()
         #self.prop_inf_exp = params['prop_inf_exp'] #Proporcion entre infectaros y suceptibles a la fecha
         self.un_dia = datetime.timedelta(days=1)
@@ -237,7 +237,8 @@ class Simple:
         self.n_paso += 1
         
         
-    def correr(self, n_steps, show=False):
+    def correr(self, n_dias, show=False):
+        n_steps = n_dias*self.pp_dia
         bloques = int(n_steps*0.1)
 
         if show:print(f'---- Corriendo simulación ----\n#Agentes: {len(self.schedule.agents)}')
@@ -295,7 +296,7 @@ if __name__=='__main__':
                     'tamano':50,
                     'dia_cero':dia_cero,
                     'expuestos_iniciales':5,
-                    'p_reduccion_mov': 0
+                    'reduccion_mov': 0
                 }
 
     modelo = Simple(Mundo, Individuo,

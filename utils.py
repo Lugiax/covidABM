@@ -85,7 +85,7 @@ class GeneradorMovilidad:
 	def __init__(self, semanal=True,
 	prediccion = True,
 	semanas_a_agregar = 4,
-	valor_de_relleno = None,
+	valor_de_relleno = None, ##En porcentaje
 	path='Datos/Global_Mobility_Report.csv',
 	):
 		#from sklearn.neural_network import MLPRegressor 
@@ -207,11 +207,11 @@ if __name__=='__main__':
 	#import datetime
 	#dia_cero = datetime.datetime(2020,4,17)
 	#dia_final = datetime.datetime(2020,4,27)
-	mov = GeneradorMovilidad(valor_de_relleno = -45)
-	print(mov.lectura)
-	print(mov.generar(40))
-	print(mov.generar(50))
-	print(mov.generar(60))
+	#mov = GeneradorMovilidad(valor_de_relleno = -45)
+	#print(mov.lectura)
+	#print(mov.generar(40))
+	#print(mov.generar(50))
+	#print(mov.generar(60))
 	#print(leer_historico())
 	#print(df[(dia_cero, 'Activos')]['Valladolid'])
 	#fecha = pd.Timestamp('2020-03-17')
@@ -238,5 +238,5 @@ if __name__=='__main__':
 	#plt.hist(dens, bins = 6)
 	#plt.show()
 
-	#G = GraficadorSimple('resultados/simple1.pk')
-	#G.graficar()
+	G = GraficadorSimple('BORRAR.pk')
+	G.graficar()
