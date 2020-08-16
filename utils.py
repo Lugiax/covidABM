@@ -238,5 +238,23 @@ if __name__=='__main__':
 	#plt.hist(dens, bins = 6)
 	#plt.show()
 
-	G = GraficadorSimple('BORRAR.pk')
-	G.graficar()
+	#G = GraficadorSimple('resultados/simple_5ixa_pruebasajuste12_1.pk', )
+	#G.graficar(ind_x_agente = 5)
+
+	import pandas as pd
+	#archivos = [f'simple{x}'for x in [3,6,7,8,12,13,16]]
+	archivos = [f'simple_5ixa_pruebasajuste12_{x}'for x in [2,4,5]]
+	print(f'Promediando los archivos {", ".join(archivos)}')
+
+	promedio = pd.read_pickle(f'resultados/{archivos[0]}.pk')
+	promedio.set_index('Fecha', inplace = True)
+	for a in archivos[1:]:
+	    nuevo = pd.read_pickle(f'resultados/{a}.pk')
+	    nuevo.set_index('Fecha', inplace = True)
+	    promedio = promedio.add(nuevo)
+	promedio = promedio/len(archivos)
+	promedio.reset_index(inplace=True)
+
+	G = GraficadorSimple(promedio)
+	G.graficar(figsize=(10,5), ind_x_agente = 5)
+	

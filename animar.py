@@ -19,7 +19,7 @@ import os
 
 
 class Visualizador():
-    def __init__(self, path, ver=['S','E','I','R'], ind_x_agente = 10, figsize = (15,8)):
+    def __init__(self, path, ver=['S','E','I','R'], ind_x_agente = 1000, figsize = (15,8)):
         plt.ion()
         self.fig = plt.figure(constrained_layout = True,
                               figsize = figsize)
@@ -44,7 +44,7 @@ class Visualizador():
         self.error = calcular_error(path, (dias_validos[0], dias_validos[-1]),
                                     self.ind_x_agente)
         
-        self.region_part = 'Mérida'
+        self.region_part = 'Valladolid'
         self.region_part_num = self.DatosMun.obtener_numero(self.region_part)
         self.fecha = self.dias[0]
         self.t_final = len(self.dias)
@@ -111,8 +111,8 @@ class Visualizador():
         estado = self.obtener_estado_mapa()
         self.mapa_scatter = self.ax_mapa.scatter(estado[:,0], estado[:,1],
                                    s = estado[:,2], c = estado[:,3],
-                                   vmin = 0, vmax = self.max_inf,
-                                   cmap = plt.get_cmap('cool')
+                                   vmin = 0, vmax = np.log10(self.max_inf),
+                                   cmap = plt.get_cmap('jet')
                                    )
         self.ax_mapa.axis('off')
 
@@ -124,7 +124,8 @@ class Visualizador():
         self.slider.on_changed(self.update)
         colorbar_ax = plt.axes([0.42,0.05,0.008,0.3])
         self.fig.colorbar(self.mapa_scatter, cax = colorbar_ax,
-                            label=f'#infectados ({self.ind_x_agente} ind. por agente)')
+                        ).set_label(label=f'#infectados ({self.ind_x_agente} ind. por agente base log10)',
+                                    size =8)
 
         cursor_mapa = mplcursors.cursor(self.mapa_scatter)#, hover=True)
         @cursor_mapa.connect("add")
@@ -149,9 +150,9 @@ class Visualizador():
         self.fecha = self.dias[int(i)]
         
         state = self.obtener_estado_mapa()
-        self.mapa_scatter.set_offsets(state[:,:2])
-        self.mapa_scatter.set_sizes(state[:,2])
-        self.mapa_scatter.set_array(state[:,3])
+        self.mapa_scatter.set_offsets(state[:,:2])#Posiciones
+        self.mapa_scatter.set_sizes(state[:,2])#Tamaño
+        self.mapa_scatter.set_array(np.log10(state[:,3]))#Color
 
         self.gen_vline.set_xdata([self.fecha,self.fecha])
         

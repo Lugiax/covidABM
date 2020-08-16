@@ -26,6 +26,8 @@ parser.add_argument('--tamano', type=int, default=150)
 parser.add_argument('--inds_x_agente', type=int, default=5)
 parser.add_argument('--expuestos_iniciales', type=int, default=0)
 parser.add_argument('--reduccion_mov', type=float)
+parser.add_argument('--dp_recuperar', type=int)
+parser.add_argument('--dp_infectar', type=int)
 parser.add_argument('-o', '--salida', type=str, default='resultado0.pk')
 parser.add_argument('--n_dias', type=int, default=293)## Los días que le quedan al año a partir del dia cero
 args = parser.parse_args().__dict__
@@ -38,7 +40,9 @@ attrs_individuos = {#De comportamiento
                     #Ante la enfermedad
                     'prob_contagiar': 0.5,
                     'prob_infectarse': 0.1,
-                    'radio_de_infeccion': 1
+                    'radio_de_infeccion': 1,
+                    'dp_infectar':7,
+                    'dp_recuperar':10
                     }
 modelo_params = {
                     'tamano':5,

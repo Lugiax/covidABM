@@ -28,7 +28,7 @@ class Individuo(Agent):
         self.distancia_paso = 1
         ##Atributos de la enfermedad
         ### Pasos para:
-        self.dp_infectar = 5
+        self.dp_infectar = 7
         self.dp_infectar_var = 1
         self.dp_recuperar = 9
         self.dp_recuperar_var = 2
@@ -39,9 +39,9 @@ class Individuo(Agent):
         self.radio_de_infeccion = 0
         self.asintomatico = False
         ###Estas variables contarán los pasos que faltan para:
-        self.pp_infectarse = int(self.model.rand.gauss(self.dp_infectar,
+        self.pp_infectarse = int(model.rand.gauss(self.dp_infectar,
                                        self.dp_infectar_var/2))*model.pp_dia
-        self.pp_recuperarse = int(self.model.rand.gauss(self.dp_recuperar,
+        self.pp_recuperarse = int(model.rand.gauss(self.dp_recuperar,
                                         self.dp_recuperar_var/2))*model.pp_dia
         
         
@@ -99,6 +99,13 @@ class Individuo(Agent):
                 print(f'El atributo {at} no es nativo del agente')
 
             setattr(self, at, attrs[at])
+            if at == 'dp_infectar':
+                self.pp_infectarse = int(self.model.rand.gauss(self.dp_infectar,
+                                         self.dp_infectar_var/2))*self.model.pp_dia
+            elif at == 'dp_recuperar':
+                self.pp_recuperarse = int(self.model.rand.gauss(self.dp_recuperar,
+                                         self.dp_recuperar_var/2))*self.model.pp_dia
+
 
     def aplicar_medidas(self, medidas = {}):
         self.establecer_atributos(medidas)

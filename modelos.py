@@ -29,7 +29,9 @@ class Modelo(Model):
         self.rand = Random(rand_seed)
         self.params = params
         self.mundo = world_object(self,agent_object)
-        self.movilidad = obtener_movilidad()###CAMBIAR -------------------------------------
+        self.movilidad = GeneradorMovilidad(semanas_a_agregar = 8,
+                                            valor_de_relleno = params['reduccion_mov'])
+        #self.movilidad = obtener_movilidad()###CAMBIAR -------------------------------------
         self.DatosMun = AnalizadorMunicipios()
         self.dia_cero = params['dia_cero']
         #self.prop_inf_exp = params['prop_inf_exp'] #Proporcion entre infectaros y suceptibles a la fecha
@@ -59,8 +61,8 @@ class Modelo(Model):
         ids_start=0
         for region in self.DatosMun.municipios:
             region_num = self.DatosMun.obtener_numero(region)
-            tamano = int(self.DatosMun.obtener_densidad(region_num))*4
-            n_pob = ceil(self.DatosMun.obtener_poblacion(region_num)//self.params['inds_x_agente'])
+            tamano = ceil(self.DatosMun.obtener_densidad(region_num)*self.params['factor_area'])
+            n_pob = ceil(self.DatosMun.obtener_poblacion(region_num)/self.params['inds_x_agente'])
             
             ids = [i for i in range(ids_start, ids_start+n_pob)]
             ids_start += n_pob
