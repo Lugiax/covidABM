@@ -140,9 +140,9 @@ class Mundo(MultiDiGraph):
                       peso = 1)
             
     def crear_nodo(self,nodo_id, tipo, ocupantes = [], tamano = None,
-                   ind_pos_def = None):
+                   ind_pos_def = 'vacios'):
         if tipo == 'municipio':
-            assert len(ocupantes)>0, 'No hay ocupantes a asignar en el munucupio'
+            assert len(ocupantes)>0, 'No hay ocupantes a asignar en el municupio'
             if not tamano:
                 tamano = 2#len(ocupantes)//2+1
             habitantes = [ind.unique_id for ind in ocupantes]
@@ -157,13 +157,13 @@ class Mundo(MultiDiGraph):
                             torus = False)
         
         #Cómo colocar a los individuos
-        if ind_pos_def=='vacios': 
+        if len(ocupantes)>0 and ind_pos_def=='vacios': 
             disponibles = espacio.empties[::]
             self.model.rand.shuffle(disponibles)
             
         
         for i in ocupantes:
-            i.nodo_casa = nodo_id if tipo=='municipio' else None
+            i.nodo_casa = nodo_id# if tipo=='municipio' else None
             i.n_familiares = len(habitantes) if tipo=='casa' else 0
             i.nodo_actual = nodo_id
             if isinstance(ind_pos_def, (list, tuple)):

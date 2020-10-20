@@ -41,7 +41,7 @@ class Modelo(Model):
         self.generar_regiones()
         self.dia = 0
         self.n_paso = 0
-        
+        self.conteo_instantaneo = [0,0,0,0]
         ## Se define el grid que se representarÃ¡ en la 
         #self.grid = self.ciudad.nodes['ciudad']['espacio']
         model_reporters = { 'Fecha': lambda x: x.dia_cero+x.dia*x.un_dia,
@@ -136,7 +136,8 @@ class Modelo(Model):
         self.n_paso += 1
         
         
-    def correr(self, n_steps, show=False):
+    def correr(self, n_dias, show=False):
+        n_steps = n_dias*self.pp_dia
         bloques = int(n_steps*0.1)
         if show:print('---- Corriendo simulación ----')
         for i in range(n_steps):
@@ -184,6 +185,7 @@ class Simple:
         self.generar_region()
         self.dia = 0
         self.fecha = params['dia_cero']
+        self.dia_cero = params['dia_cero']
         self.n_paso = 0
         
         model_reporters = { 'Fecha': lambda x: x.fecha,
@@ -207,7 +209,7 @@ class Simple:
                 self.params['expuestos_iniciales']-=1
             self.schedule.add(ind)
 
-        self.mundo.crear_nodo('Yucatán', 'municipio',
+        self.mundo.crear_nodo('espacio', 'espacio',
                               ocupantes = individuos,
                               tamano = self.params['tamano'],
                               ind_pos_def = 'aleatorio'
@@ -230,8 +232,6 @@ class Simple:
         self.dia = self.n_paso//self.pp_dia
         self.fecha = self.params['dia_cero']+ self.un_dia*self.dia
         self.semana = self.fecha.isocalendar()[1]
-        self.porcentaje_movilidad = 1 + self.movilidad.generar(self.semana)/100
-
         self.conteo()
 
         self.datacollector.collect(self)
@@ -271,6 +271,170 @@ class Simple:
         modelo.datacollector.get_model_vars_dataframe().to_pickle(path)
 
 
+class ModeloSanaDistancia(Modelo):
+    """
+    Caso 1
+    A partir de que se sobrepase un porcentaje de la pobación como infectada,
+    los individuos comenzarán a guardar su distancia de una casilla.
+
+    """
+
+    def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
+        super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
+        self.umbral_para_restriccion = params['umbral_rest']
+        self.restriccion_aplicada = False
+
+    def step(self):
+        self.dia = self.n_paso//self.pp_dia #es el momento del dia
+
+        if self.dia == 4:
+            ##En el cuarto día, que corresponde al primer caso en
+            #Yucatán, se planta un infectado. Esto para asegurar que
+            #siempre habrá un infectado
+            agentes = self.mundo.obtener_agentes_en_nodo('Mérida')
+            agentes[0].salud = self.INFECTADO
+
+        self.conteo()
+        proporcion_infectados = self.conteo_instantaneo[2]/sum(self.conteo_instantaneo)
+        #print(f'#infectados: {self.conteo_instantaneo}. Proporcion de infectados {proporcion_infectados}')
+        self.datacollector.collect(self)
+        self.schedule.step()
+        self.n_paso += 1
+
+        ##Se revisa la condición para aplicar la restricción
+        if not self.restriccion_aplicada and\
+        proporcion_infectados>self.umbral_para_restriccion:
+            print(f'En el día {self.dia} se aplican las restricciones')
+            for a in self.schedule.agents:
+                a.evitar_agentes = True
+            self.restriccion_aplicada = True
+
+    def correr(self, n_dias, show=False):
+        n_steps = n_dias*self.pp_dia
+        bloques = int(n_steps*0.1)
+        if show:print('---- Corriendo simulación ----')
+        for i in range(n_steps):
+            self.step()
+            if show and int(i%bloques) == 0:
+                print(f'{int(i/n_steps*100)}%...', end = '\n')
+        if show: print('100%')
+
+class ModeloCuarentenaEstricta(Modelo):
+    """
+    Caso 1
+    A partir de que se sobrepase un porcentaje de la pobación como infectada,
+    los individuos comenzarán a guardar su distancia de una casilla.
+
+    """
+
+    def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
+        super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
+        self.umbral_para_restriccion = params['umbral_rest']
+        self.restriccion_aplicada = False
+        self.mundo.crear_nodo('cuarentena', 'nodo_seguridad', tamano = 1)
+
+    def step(self):
+        self.dia = self.n_paso//self.pp_dia #es el momento del dia
+
+        if self.dia == 4:
+            ##En el cuarto día, que corresponde al primer caso en
+            #Yucatán, se planta un infectado. Esto para asegurar que
+            #siempre habrá un infectado
+            agentes = self.mundo.obtener_agentes_en_nodo('Mérida')
+            agentes[0].salud = self.INFECTADO
+
+        self.conteo()
+        proporcion_infectados = self.conteo_instantaneo[2]/sum(self.conteo_instantaneo)
+        #print(f'#infectados: {self.conteo_instantaneo}. Proporcion de infectados {proporcion_infectados}')
+        self.datacollector.collect(self)
+        self.schedule.step()
+        self.n_paso += 1
+
+        ##Se revisa la condición para aplicar la restricción
+        if not self.restriccion_aplicada and\
+        proporcion_infectados>self.umbral_para_restriccion:
+            print(f'En el día {self.dia} se aplican las restricciones')
+            for a in self.schedule.agents:
+                a.activar_cuarentena = True
+            self.restriccion_aplicada = True
+
+    def correr(self, n_dias, show=False):
+        n_steps = n_dias*self.pp_dia
+        bloques = int(n_steps*0.1)
+        if show:print('---- Corriendo simulación ----')
+        for i in range(n_steps):
+            self.step()
+            if show and int(i%bloques) == 0:
+                print(f'{int(i/n_steps*100)}%...', end = '\n')
+        if show: print('100%')
+
+
+class ModeloAdaptable(Modelo):
+    """
+    Caso 1
+    A partir de que se sobrepase un porcentaje de la pobación como infectada,
+    los individuos comenzarán a guardar su distancia de una casilla.
+
+    """
+
+    def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
+        super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
+        self.umbral_restriccion = params['umbral_rest']
+        self.umbral_liberacion = params['umbral_lib']
+        self.liberar_sana_distancia = params['liberar_sana_distancia']
+        self.restriccion_aplicada = False
+        self.dias_de_rest = [None, None]
+        self.aplicar_restriccion = True
+
+    def step(self):
+        self.dia = self.n_paso//self.pp_dia #es el momento del dia
+
+        if self.dia == 4:
+            ##En el cuarto día, que corresponde al primer caso en
+            #Yucatán, se planta un infectado. Esto para asegurar que
+            #siempre habrá un infectado
+            agentes = self.mundo.obtener_agentes_en_nodo('Mérida')
+            agentes[0].salud = self.INFECTADO
+
+        self.conteo()
+        proporcion_infectados = self.conteo_instantaneo[2]/sum(self.conteo_instantaneo)
+        #print(f'#infectados: {self.conteo_instantaneo}. Proporcion de infectados {proporcion_infectados}')
+        self.datacollector.collect(self)
+        self.schedule.step()
+        self.n_paso += 1
+
+        ##Se revisa la condición para aplicar la restricción
+        if not self.restriccion_aplicada and\
+        proporcion_infectados>self.umbral_restriccion and\
+        self.aplicar_restriccion:
+            fecha = self.dia_cero+self.dia*self.un_dia
+            print(f'En el día {fecha} se aplican las restricciones')
+            self.dias_de_rest[0] = self.dia
+            for a in self.schedule.agents:
+                a.evitar_agentes = True
+                a.alpha = 0.5
+            self.restriccion_aplicada = True
+            self.aplicar_restriccion = False
+
+        elif self.restriccion_aplicada and\
+        proporcion_infectados<self.umbral_liberacion:
+            fecha = self.dia_cero+self.dia*self.un_dia
+            print(f'En el día {fecha} se levantan las restricciones')
+            self.dias_de_rest[1] = self.dia
+            for a in self.schedule.agents:
+                a.evitar_agentes = not self.liberar_sana_distancia
+                a.alpha = 0
+            self.restriccion_aplicada = False
+
+    def correr(self, n_dias, show=False):
+        n_steps = n_dias*self.pp_dia
+        bloques = int(n_steps*0.1)
+        if show:print('---- Corriendo simulación ----')
+        for i in range(n_steps):
+            self.step()
+            if show and int(i%bloques) == 0:
+                print(f'{int(i/n_steps*100)}%...', end = '\n')
+        if show: print('100%')
 
 
 if __name__=='__main__':
