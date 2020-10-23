@@ -143,12 +143,8 @@ def leer_historico(solo_activos = False, intervalo = None, ind_x_agente = 1):
 def convertir_corrida(corrida, con_fechas=False):
     fechas=None
     if isinstance(corrida, str):
-        with open(corrida, 'rb') as f:
-            corrida = pk.load(f)
-            try:
-                fechas = pk.load(f)
-            except:
-                print('No se encontraron fechas de restricciones')
+        datos = extraer_pk(corrida)
+        corrida = datos['corrida']
 
     corrida.reset_index(drop=True, inplace=True)
     totales = corrida.iloc[:,1:5].values
@@ -173,7 +169,7 @@ def convertir_corrida(corrida, con_fechas=False):
     #import pdb; pdb.set_trace()
     datos = datos.groupby([('Fecha', 'fecha')]).mean()
 
-    return (datos, fechas)
+    return datos
 
 
 def calcular_error(simu, intervalo, inds_x_agente = 5):
@@ -220,7 +216,7 @@ def promediar(archivos, plot=True, rows=2, cols=5, figsize=(20,10), title='', co
     print(f'Promediando los archivos disponibles ({len(archivos)}): {archivos}')
     fechas_rest = None
     if convertir:
-        promedio, fechas_rest = convertir_corrida(archivos[0], con_fechas=con_fechas)
+        promedio = convertir_corrida(archivos[0], con_fechas=con_fechas)
     else:
         promedio = archivos[0]
     promedio = promedio['Total']
@@ -230,20 +226,20 @@ def promediar(archivos, plot=True, rows=2, cols=5, figsize=(20,10), title='', co
         figs, axes = plt.subplots(rows, cols, figsize=figsize)
         axes = axes.ravel()
         axes[0].plot_date(fechas, promedio.I, 'k-')
-        if con_fechas:
-            axes[0].plot_date([fechas_rest[0], fechas_rest[0]], [0, promedio.I.max()],
-                         'r-', label='aplicacion')
+        #if con_fechas:
+        #    axes[0].plot_date([fechas_rest[0], fechas_rest[0]], [0, promedio.I.max()],
+        #                 'r-', label='aplicacion')
         plt.setp(axes[0].xaxis.get_majorticklabels(), rotation=90)
 
     for i, a in enumerate(archivos[1:]):
-        nuevo, fechas_rest = convertir_corrida(a, con_fechas=con_fechas) if convertir else a['Total']
-        nuevo= nuevo['Total']
+        nuevo = convertir_corrida(a, con_fechas=con_fechas) if convertir else a['Total']
+        nuevo = nuevo['Total']
         promedio = promedio.add(nuevo)
         if plot:
             axes[i+1].plot_date(fechas, nuevo.I, 'k-')
-            if con_fechas:
-                axes[i+1].plot_date([fechas_rest[0], fechas_rest[0]], [0, nuevo.I.max()],
-                             'r-', label='aplicacion')
+            #if con_fechas:
+            #    axes[i+1].plot_date([fechas_rest[0], fechas_rest[0]], [0, nuevo.I.max()],
+            #                 'r-', label='aplicacion')
             plt.setp(axes[i+1].xaxis.get_majorticklabels(), rotation=90)
 
     promedio = promedio/len(archivos)
@@ -259,6 +255,12 @@ def promediar(archivos, plot=True, rows=2, cols=5, figsize=(20,10), title='', co
 
     return promedio
 
+def extraer_pk(path):
+    datos = dict()
+    with open(path, 'rb') as f:
+        datos['corrida'] = pk.load(f)
+        datos['extra'] = pk.load(f)
+    return datos
 
 
 if __name__=='__main__':

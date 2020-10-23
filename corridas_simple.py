@@ -58,23 +58,35 @@ class CasoBase(Simple):
             self.step()
             if show and int(i%bloques) == 0:
                 t1 = time.time()
-                print(f'{int(i/n_steps*100)}%... {t1-t0}seg', end = '\n')
+                print(f'{int(i/n_steps*100)}%... {t1-t0:.2f}seg', end = '\n')
         tf = time.time()
         if show: print(f'100% en {(tf-t0)/60:.2} minutos')
 
     def guardar(self, path):
+        ##Como datos extra se calcula el promedio del # de interacciones
+        promedio_interacciones = 0
+        total_agentes = len(self.schedule.agents)
+        for a in self.schedule.agents:
+            promedio_interacciones += a.contador_interacciones
+        promedio_interacciones /= total_agentes
+
+
         carpeta = os.path.dirname(path)
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
         datos = self.datacollector.get_model_vars_dataframe()
+        extras = {'dias_de_restricciones': self.dias_de_rest,
+                  'total_agentes': total_agentes,
+                  'prom_interacciones': promedio_interacciones}
         with open(path, 'wb') as f:
             pk.dump(datos, f)
-            pk.dump(self.dias_de_rest, f)
+            pk.dump(extras, f)
+        print(f'Resultado guardado en {path}')
+        return(datos, extras)
 
 
 
 class Cuarentena(CasoBase):
-
     def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
         super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
         self.mundo.crear_nodo('cuarentena', 'nodo_seguridad', tamano = 1)
@@ -87,12 +99,11 @@ class Cuarentena(CasoBase):
             for a in self.schedule.agents:
                 a.activar_cuarentena = True
             self.restriccion_aplicada = True
+            self.dias_de_rest[0] = self.fecha
 
 class SanaDistancia(CasoBase):
-
     def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
         super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
-
 
     def revisar_restricciones(self):
         ##Se revisa la condición para aplicar la restricción
@@ -103,9 +114,9 @@ class SanaDistancia(CasoBase):
                 a.evitar_agentes = True
                 a.alpha = 0.5
             self.restriccion_aplicada = True
+            self.dias_de_rest[0] = self.fecha
 
 class Adaptable(CasoBase):
-
     def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
         super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
         self.umbral_restriccion = params['umbral_rest']
@@ -121,22 +132,22 @@ class Adaptable(CasoBase):
         self.aplicar_restriccion:
             fecha = self.dia_cero+self.dia*self.un_dia
             print(f'En el día {fecha} se aplican las restricciones')
-            self.dias_de_rest[0] = self.dia
             for a in self.schedule.agents:
                 a.evitar_agentes = True
                 a.alpha = 0.5
             self.restriccion_aplicada = True
             self.aplicar_restriccion = False
+            self.dias_de_rest[0] = self.fecha
 
         elif self.restriccion_aplicada and\
         self.proporcion_infectados<self.umbral_liberacion:
             fecha = self.dia_cero+self.dia*self.un_dia
             print(f'En el día {fecha} se levantan las restricciones')
-            self.dias_de_rest[1] = self.dia
             for a in self.schedule.agents:
                 a.evitar_agentes = not self.liberar_sana_distancia
                 a.alpha = 0
             self.restriccion_aplicada = False
+            self.dias_de_rest[1] = self.fecha
 
 
 def modificar_parametros(param_ind, param_mod, params={}):
@@ -153,80 +164,190 @@ def modificar_parametros(param_ind, param_mod, params={}):
     return ind_attrs, mod_param
 
 
-##------------------------------------------------------------------------
-
-
-##Parámetros base
-ind_params = {#De comportamiento
-                    'evitar_agentes': False,
-                    'distancia_paso': 1,
-                    'prob_movimiento':0.5,
-                    #'frac_mov_nodos':0.01,
-                    #Ante la enfermedad
-                    'prob_contagiar': 0.5,
-                    'prob_infectarse': 0.5,
-                    'radio_de_infeccion': 1,
-                    'dp_infectar':10,
-                    'dp_recuperar':10,
-                    'alpha':0.1
+if __name__=='__main__':
+    ##Parámetros base
+    ind_params = {#De comportamiento
+                        'evitar_agentes': False,
+                        'distancia_paso': 1,
+                        'prob_movimiento':0.5,
+                        #'frac_mov_nodos':0.01,
+                        #Ante la enfermedad
+                        'prob_contagiar': 0.5,
+                        'prob_infectarse': 0.5,
+                        'radio_de_infeccion': 1,
+                        'dp_infectar':10,
+                        'dp_recuperar':10,
+                        'alpha':0
+                        }
+    mod_params = {
+                        'tamano':120,
+                        'inds_x_agente':300,
+                        'dia_cero':datetime.datetime(2020,1,1),
+                        'expuestos_iniciales':1,
+                        'reduccion_mov': None,
+                        'umbral_rest':0.05,
+                        'umbral_lib':0.05,
+                        'liberar_sana_distancia':False  
                     }
-mod_params = {
-                    'tamano':20,
-                    'inds_x_agente':500,
-                    'dia_cero':datetime.datetime(2020,3,13),
-                    'expuestos_iniciales':1,
-                    'reduccion_mov': None,
-                    'umbral_rest':0.05,
-                    'umbral_lib':0.05,
-                    'liberar_sana_distancia':False  
-                }
 
-dias_de_simulacion = 50
-"""
-##Caso base
-print('Base')
-carpeta_de_salida = 'resultadosCasos/Base/'
-modelo = CasoBase(Mundo, Individuo, mod_params, ind_params)
-modelo.correr(dias_de_simulacion, show=True)
-modelo.guardar(carpeta_de_salida+'base_simple1.pk')
+    dias_de_simulacion = 400
+
+    ##Caso base
+    print('Base')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/Base/'
+    for i in range(n_rep):
+        modelo = CasoBase(Mundo, Individuo, mod_params, ind_params)
+        modelo.correr(dias_de_simulacion, show=True)
+        modelo.guardar(carpeta_de_salida+f'base_simple{i}.pk')
+
+   
+    ##Caso Sana Distancia
+    print('\nSana Distancia evitando agentes sin umbral')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/DistanciamientoSocial/'
+    alphas:[0.05, 0.1, 0.3, 0.5]
+    for alpha in alphas:
+        for i in range(n_reps):
+            nuevos_params = {'umbral_rest': 1,
+                             'evitar_agentes': True}
+            ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                            nuevos_params)
+            modelo = SanaDistancia(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'dist_soc_simple_evitaragentes_sinumbral_alpha{alpha}_{i}.pk')
+
+    print('\nSana Distancia sin evitar agentes sin umbral')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/DistanciamientoSocial/'
+    alphas:[0.05, 0.1, 0.3, 0.5]
+    for alpha in alphas:
+        for i in range(n_reps):
+            nuevos_params = {'umbral_rest': 1,
+                             'evitar_agentes': False}
+            ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                            nuevos_params)
+            modelo = SanaDistancia(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'dist_soc_simple_sinevitaragentes_sinumbral_alpha{alpha}_{i}.pk')
+
+    ##Caso Cuarentena
+    print('Cuarentena')
+    carpeta_de_salida = 'resultadosCasos/CuarentenaEstricta/'
+    n_rep = 10
+    umbrales = [0.007, 0.015, 0.023, 0.030]
+    for umbral in umbrales:
+        nuevos_params = {'umbral_rest': umbral}
+        ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                    nuevos_params)
+        for i in range(n_rep):
+            
+            modelo = Cuarentena(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'cuarentena_simple{umbral}_{i}.pk')
 
 
-print(promediar(['resultadosCasos/Base/base_simple1.pk'],
-                rows=1, cols=2))
-"""
-"""
-##Caso Sana Distancia
-print('Sana Distancia')
-carpeta_de_salida = 'resultadosCasos/DistanciamientoSocial/'
-nuevos_params = {'umbral_rest': 0.1}
-ind_params, mod_params = modificar_parametros(ind_params, mod_params,
-                                                nuevos_params)
-modelo = SanaDistancia(Mundo, Individuo, mod_params, ind_params)
-modelo.correr(dias_de_simulacion, show=True)
-modelo.guardar(carpeta_de_salida+'dist_soc_simple1.pk')
-"""
-print(promediar(['resultadosCasos/DistanciamientoSocial/dist_soc_simple1.pk'],
-                rows=1, cols=2, con_fechas=True))
-"""
-##Caso Cuarentena
-print('Cuarentena')
-carpeta_de_salida = 'resultadosCasos/CuarentenaEstricta/'
-nuevos_params = {'umbral_rest': 0.1}
-ind_params, mod_params = modificar_parametros(ind_params, mod_params,
-                                                nuevos_params)
-modelo = Cuarentena(Mundo, Individuo, mod_params, ind_params)
-modelo.correr(dias_de_simulacion, show=True)
-modelo.guardar(carpeta_de_salida+'cuarentena_simple1.pk')
 
-##Caso Adaptable
-print('Adaptable')
-carpeta_de_salida = 'resultadosCasos/Adaptable/'
-nuevos_params = {'umbral_rest': 0.005,
-                 'umbral-rest': 0.01,
-                 'alpha': 0}
-ind_params, mod_params = modificar_parametros(ind_params, mod_params,
-                                                nuevos_params)
-modelo = Adaptable(Mundo, Individuo, mod_params, ind_params)
-modelo.correr(dias_de_simulacion, show=True)
-modelo.guardar(carpeta_de_salida+'adaptable_simple1.pk')
-"""
+
+
+
+    ##Parámetros base para saturación
+    ind_params = {#De comportamiento
+                        'evitar_agentes': False,
+                        'distancia_paso': 1,
+                        'prob_movimiento':0.5,
+                        #'frac_mov_nodos':0.01,
+                        #Ante la enfermedad
+                        'prob_contagiar': 0.5,
+                        'prob_infectarse': 0.5,
+                        'radio_de_infeccion': 1,
+                        'dp_infectar':10,
+                        'dp_recuperar':10,
+                        'alpha':0
+                        }
+    mod_params = {
+                        'tamano':81,
+                        'inds_x_agente':300,
+                        'dia_cero':datetime.datetime(2020,1,1),
+                        'expuestos_iniciales':1,
+                        'reduccion_mov': None,
+                        'umbral_rest':0.05,
+                        'umbral_lib':0.05,
+                        'liberar_sana_distancia':False  
+                    }
+
+    dias_de_simulacion = 300
+
+    ##Caso base
+    print('Base')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/SatBase/'
+    for i in range(n_rep):
+        modelo = CasoBase(Mundo, Individuo, mod_params, ind_params)
+        modelo.correr(dias_de_simulacion, show=True)
+        modelo.guardar(carpeta_de_salida+f'satbase_simple{i}.pk')
+
+   
+    ##Caso Sana Distancia
+    print('\nSana Distancia evitando agentes sin umbral')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/SatDistanciamientoSocial/'
+    alphas:[0.05, 0.1, 0.3, 0.5]
+    for alpha in alphas:
+        for i in range(n_reps):
+            nuevos_params = {'umbral_rest': 1,
+                             'evitar_agentes': True}
+            ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                            nuevos_params)
+            modelo = SanaDistancia(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'satdist_soc_simple_evitaragentes_sinumbral_alpha{alpha}_{i}.pk')
+
+    print('\nSana Distancia sin evitar agentes sin umbral')
+    n_rep = 10
+    carpeta_de_salida = 'resultadosCasos/SatDistanciamientoSocial/'
+    alphas:[0.05, 0.1, 0.3, 0.5]
+    for alpha in alphas:
+        for i in range(n_reps):
+            nuevos_params = {'umbral_rest': 1,
+                             'evitar_agentes': False}
+            ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                            nuevos_params)
+            modelo = SanaDistancia(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'satdist_soc_simple_sinevitaragentes_sinumbral_alpha{alpha}_{i}.pk')
+
+    ##Caso Cuarentena
+    print('Cuarentena')
+    carpeta_de_salida = 'resultadosCasos/SatCuarentenaEstricta/'
+    n_rep = 10
+    umbrales = [0.007, 0.015, 0.023, 0.030]
+    for umbral in umbrales:
+        nuevos_params = {'umbral_rest': umbral}
+        ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                    nuevos_params)
+        for i in range(n_rep):
+            
+            modelo = Cuarentena(Mundo, Individuo, mod_params, ind_params)
+            modelo.correr(dias_de_simulacion, show=True)
+            modelo.guardar(carpeta_de_salida+f'satcuarentena_simple{umbral}_{i}.pk')
+
+
+
+
+""""
+    ##Caso Adaptable
+    print('Adaptable')
+    carpeta_de_salida = 'resultadosCasos/Adaptable/'
+    n_rep = 10
+    nuevos_params = {'umbral_rest': 0.005,
+                     'umbral-rest': 0.01,
+                     'alpha': 0}
+
+    ind_params, mod_params = modificar_parametros(ind_params, mod_params,
+                                                    nuevos_params)
+    for i in range(n_rep):
+        modelo = Adaptable(Mundo, Individuo, mod_params, ind_params)
+        modelo.correr(dias_de_simulacion, show=True)
+        modelo.guardar(carpeta_de_salida+f'adaptable_simple{i}.pk')
+""""

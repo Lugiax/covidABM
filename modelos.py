@@ -182,6 +182,8 @@ class Simple:
         self.schedule = RandomActivation(self)
 
         self.conteo_instantaneo = [0,0,0,0]
+        self.n_interacciones = 0
+        self.d_interacciones = 0
         self.generar_region()
         self.dia = 0
         self.fecha = params['dia_cero']
@@ -192,9 +194,10 @@ class Simple:
                             'Susceptibles': self.conteo_func(self.SUSCEPTIBLE),
                             'Expuestos': self.conteo_func(self.EXPUESTO),
                             'Infectados': self.conteo_func(self.INFECTADO),
-                            'Recuperados': self.conteo_func(self.RECUPERADO)}
+                            'Recuperados': self.conteo_func(self.RECUPERADO),
+                            'Interacciones': lambda x: x.d_interacciones}
         self.datacollector = DataCollector(model_reporters)
-        self.conteo_instantaneo = self.conteo()
+        #self.conteo()
 
     
     def generar_region(self):
@@ -218,10 +221,18 @@ class Simple:
    
     def conteo(self):
         #Una función para contar los casos actuales en la ciudad
-        self.conteo_instantaneo = [0,0,0,0]
+        conteo_instantaneo = [0,0,0,0]
+        n_interacciones = 0
         for a in self.schedule.agents:
-            self.conteo_instantaneo[a.salud] += 1
-        return self.conteo_instantaneo
+            conteo_instantaneo[a.salud] += 1
+            n_interacciones += a.contador_interacciones
+        self.conteo_instantaneo = conteo_instantaneo
+
+        ##Se calculan las interacciones diarias
+        self.d_interacciones = n_interacciones - self.n_interacciones
+        self.n_interacciones = n_interacciones
+        #print(self.d_interacciones, n_interacciones)
+        #return conteo_instantaneo, n_interacciones-self.n_interacciones
 
     def conteo_func(self, tipo):
         def contar(modelo):
