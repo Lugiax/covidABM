@@ -3,6 +3,7 @@ import numpy as np
 import datetime
 import matplotlib.pyplot as plt
 import pickle as pk
+from datetime import datetime
 
 
 class AnalizadorMunicipios:
@@ -145,7 +146,7 @@ def convertir_corrida(corrida, con_fechas=False):
     if isinstance(corrida, str):
         datos = extraer_pk(corrida)
         corrida = datos['corrida']
-
+        fechas_restricciones = datos['extra']['dias_de_restricciones']
     corrida.reset_index(drop=True, inplace=True)
     totales = corrida.iloc[:,1:5].values
     fechas = corrida.iloc[:,0].values
@@ -169,7 +170,10 @@ def convertir_corrida(corrida, con_fechas=False):
     #import pdb; pdb.set_trace()
     datos = datos.groupby([('Fecha', 'fecha')]).mean()
 
-    return datos
+    if con_fechas:
+        return datos, fechas_restricciones
+    else:
+        return datos
 
 
 def calcular_error(simu, intervalo, inds_x_agente = 5):
@@ -212,45 +216,53 @@ def calcular_error(simu, intervalo, inds_x_agente = 5):
 
 
 
-def promediar(archivos, plot=True, rows=2, cols=5, figsize=(20,10), title='', convertir=True, con_fechas=False):
-    print(f'Promediando los archivos disponibles ({len(archivos)}): {archivos}')
-    fechas_rest = None
+def promediar(archivos, plot=True, rows=2, cols=5, figsize=(20,10), title='', convertir=True):
+    
     if convertir:
-        promedio = convertir_corrida(archivos[0], con_fechas=con_fechas)
+        print(f'Promediando los archivos disponibles ({len(archivos)}): {archivos}')
+        promedio, fechas_rest = convertir_corrida(archivos[0], con_fechas=True)
     else:
         promedio = archivos[0]
+        fechas_rest = None
     promedio = promedio['Total']
     fechas = promedio.index
-
+    fechas_rest_prom = [fechas_rest[0]]
     if plot: 
         figs, axes = plt.subplots(rows, cols, figsize=figsize)
         axes = axes.ravel()
         axes[0].plot_date(fechas, promedio.I, 'k-')
-        #if con_fechas:
-        #    axes[0].plot_date([fechas_rest[0], fechas_rest[0]], [0, promedio.I.max()],
-        #                 'r-', label='aplicacion')
+        if fechas_rest is not None:
+            axes[0].plot_date([fechas_rest[0], fechas_rest[0]],
+                                [0, promedio.I.loc[fechas_rest[0]]],
+                                'r--')
         plt.setp(axes[0].xaxis.get_majorticklabels(), rotation=90)
 
     for i, a in enumerate(archivos[1:]):
-        nuevo = convertir_corrida(a, con_fechas=con_fechas) if convertir else a['Total']
+        nuevo, fechas_rest = convertir_corrida(a, con_fechas=True) if convertir else a['Total']
         nuevo = nuevo['Total']
         promedio = promedio.add(nuevo)
         if plot:
             axes[i+1].plot_date(fechas, nuevo.I, 'k-')
-            #if con_fechas:
-            #    axes[i+1].plot_date([fechas_rest[0], fechas_rest[0]], [0, nuevo.I.max()],
-            #                 'r-', label='aplicacion')
+            if fechas_rest is not None:
+                axes[i+1].plot_date([fechas_rest[0], fechas_rest[0]],
+                                    [0, nuevo.I.loc[fechas_rest[0]]],
+                                    'r--')
+            fechas_rest_prom.append(fechas_rest[0])
             plt.setp(axes[i+1].xaxis.get_majorticklabels(), rotation=90)
 
     promedio = promedio/len(archivos)
+    fechas_rest_prom = promediar_fechas(fechas_rest_prom)
 
     if plot:
         plt.show()
-        fig, ax = plt.subplots(figsize=(8,5))
-        ax.plot_date(fechas, promedio.I, 'k-')
-        ax.set_title(title)
-        ax.set_xlabel('Fecha')
-        ax.set_ylabel('Agentes infectados')
+        fig_prom, ax_prom = plt.subplots(figsize=(8,5))
+        ax_prom.plot_date(fechas, promedio.I, 'k-')
+        ax_prom.plot_date([fechas_rest_prom, fechas_rest_prom],
+                          [0, promedio.I.loc[fechas_rest_prom]],
+                          'k--')
+        ax_prom.set_title(title)
+        ax_prom.set_xlabel('Fecha')
+        ax_prom.set_ylabel('Agentes infectados')
         plt.show()
 
     return promedio
@@ -261,6 +273,13 @@ def extraer_pk(path):
         datos['corrida'] = pk.load(f)
         datos['extra'] = pk.load(f)
     return datos
+
+def promediar_fechas(fechas):
+    #fechas es una lista con elementos datetime
+    segundos = sum([f.timestamp() for f in fechas])/len(fechas)
+    completa = datetime.fromtimestamp(segundos)
+    fecha = datetime(completa.year, completa.month, completa.day)
+    return fecha
 
 
 if __name__=='__main__':
@@ -300,20 +319,25 @@ if __name__=='__main__':
 
     #G = GraficadorSimple('resultados/simple_5ixa_pruebasajuste12_1.pk', )
     #G.graficar(ind_x_agente = 5)
+    import os
+    from glob import glob
+    path_carpeta = 'resultadosCasos/CuarentenaEstricta'
+    corridas = [0.03]#0.007,  0.015, 0.023, 
+    colors = ['darkred', 'dodgerblue', 'orange', 'mediumblue', 'indigo',
+              'chocolate', 'forestgreen', 'royalblue']
 
-    import pandas as pd
-    #archivos = [f'simple{x}'for x in [3,6,7,8,12,13,16]]
-    archivos = [f'simple_5ixa_pruebasajuste12_{x}'for x in [2,4,5]]
-    print(f'Promediando los archivos {", ".join(archivos)}')
-
-    promedio = pd.read_pickle(f'resultados/{archivos[0]}.pk')
-    promedio.set_index('Fecha', inplace = True)
-    for a in archivos[1:]:
-        nuevo = pd.read_pickle(f'resultados/{a}.pk')
-        nuevo.set_index('Fecha', inplace = True)
-        promedio = promedio.add(nuevo)
-    promedio = promedio/len(archivos)
-    promedio.reset_index(inplace=True)
-
-    G = GraficadorSimple(promedio)
-    G.graficar(figsize=(10,5), ind_x_agente = 5)
+    fig, ax = plt.subplots(figsize=(10,10))
+    ax.set_title('Distanciamiento social, sin umbral')
+    ax.set_xlabel('Fecha')
+    ax.set_ylabel('Agentes infectados')
+    for corr, color in zip(corridas, colors):
+        archivos = glob(os.path.join(path_carpeta, f'cuarentena_simple{corr}_*'))
+        fechas_rest = [extraer_pk(f)['extra']['dias_de_restricciones'][0] for f in archivos]
+        fecha_rest = promediar_fechas(fechas_rest)
+        promedio = promediar(archivos, plot=True)
+        ax.plot_date(promedio.index, promedio.I, '-', label=f'Umbral={corr}',
+                    color=color)
+        ax.plot_date([fecha_rest, fecha_rest],
+                    [0, promedio.I.loc[fecha_rest]], '--', color=color)
+    plt.legend()
+    plt.show()
