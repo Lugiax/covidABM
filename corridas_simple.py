@@ -164,6 +164,53 @@ def modificar_parametros(param_ind, param_mod, params={}):
     return ind_attrs, mod_param
 
 
+class ModeloVacunacion(CasoBase):
+    """
+    A partir del dia 15 de Febrero de 2021 se comienza la vacunación con una tasa beta
+    diaria. Los agentes vacunados pasan directamente a RECUPERADOS
+    """
+
+    def __init__(self,world_object, agent_object, params, ind_attrs, rand_seed=None):
+        super().__init__(world_object, agent_object, params, ind_attrs, rand_seed=None)
+        self.tasa_vacunacion = params['tasa_vacunacion']
+        self.max_vacunados = params['max_vacunados']
+        self.vacunados = 0
+        self.aplicar_vacunas = False
+
+    def step(self):
+        self.dia = self.n_paso//self.pp_dia #es el momento del dia
+
+        if self.dia == 4:
+            ##En el cuarto día, que corresponde al primer caso en
+            #Yucatán, se planta un infectado. Esto para asegurar que
+            #siempre habrá un infectado
+            agentes = self.mundo.obtener_agentes_en_nodo('Mérida')
+            agentes[0].salud = self.INFECTADO
+
+        self.conteo()
+        #proporcion_infectados = self.conteo_instantaneo[2]/sum(self.conteo_instantaneo)
+        #print(f'#infectados: {self.conteo_instantaneo}. Proporcion de infectados {proporcion_infectados}')
+        self.datacollector.collect(self)
+        self.schedule.step()
+        self.n_paso += 1
+        fecha = self.dia_cero+self.dia*self.un_dia
+
+        ##Se revisa la condición para aplicar la restricción
+        if self.aplicar_vacunas or datetime.datetime(2021,2,15) == fecha:
+            self.aplicar_vacunas = True
+            por_vacunar = self.tasa_vacunacion
+            for a in self.schedule.agents:
+                if por_vacunar==0:
+                    break
+                if a.salud == self.SUSCEPTIBLE:
+                    a.salud = self.RECUPERADO
+                    self.vacunados += 1
+                    por_vacunar -= 1
+        
+        if self.vacunados >= self.max_vacunados:
+            self.aplicar_vacunas = False
+
+
 if __name__=='__main__':
     
     ##Parámetros base
