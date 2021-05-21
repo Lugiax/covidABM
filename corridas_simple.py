@@ -184,7 +184,7 @@ class Vacunacion(CasoBase):
             ##En el cuarto día, que corresponde al primer caso en
             #Yucatán, se planta un infectado. Esto para asegurar que
             #siempre habrá un infectado
-            agentes = self.mundo.obtener_agentes_en_nodo('Mérida')
+            agentes = self.mundo.obtener_agentes_en_nodo('espacio')
             agentes[0].salud = self.INFECTADO
 
         self.conteo()
@@ -195,8 +195,8 @@ class Vacunacion(CasoBase):
         self.n_paso += 1
         fecha = self.dia_cero+self.dia*self.un_dia
 
-        ##Se revisa la condición para aplicar la restricción
-        if self.aplicar_vacunas or datetime.datetime(2021,2,15) == fecha:
+        ##Se revisa la condición para aplicar la vacunación
+        if self.aplicar_vacunas or datetime.datetime(2021,2,15) >= fecha:
             self.aplicar_vacunas = True
             por_vacunar = self.tasa_vacunacion
             for a in self.schedule.agents:
@@ -207,7 +207,7 @@ class Vacunacion(CasoBase):
                     self.vacunados += 1
                     por_vacunar -= 1
         
-        if if self.max_vacunados != 0 and self.vacunados >= self.max_vacunados:
+        if self.max_vacunados != 0 and self.vacunados >= self.max_vacunados:
             self.aplicar_vacunas = False
 
 
