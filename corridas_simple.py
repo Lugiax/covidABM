@@ -178,8 +178,8 @@ class Vacunacion(CasoBase):
         self.aplicar_vacunas = False
 
     def step(self):
-        self.dia = self.n_paso//self.pp_dia #es el momento del dia
-
+        self.dia = self.n_paso//self.pp_dia #pp_dia es el momento del dia
+        self.fecha = self.params['dia_cero']+ self.un_dia*self.dia
         if self.dia == 4:
             ##En el cuarto día, que corresponde al primer caso en
             #Yucatán, se planta un infectado. Esto para asegurar que
@@ -193,14 +193,16 @@ class Vacunacion(CasoBase):
         self.datacollector.collect(self)
         self.schedule.step()
         self.n_paso += 1
-        fecha = self.dia_cero+self.dia*self.un_dia
+        
 
         ##Se revisa la condición para aplicar la vacunación
-        if self.aplicar_vacunas or datetime.datetime(2021,2,15) >= fecha:
+        if (self.aplicar_vacunas and self.n_paso%self.pp_dia==0) or self.params['fecha_vacunacion'] == self.fecha:
+            if not self.aplicar_vacunas: 
+                print(f'Se aplican vacunas el dia {self.fecha} a una tasa de {self.tasa_vacunacion} agentesxdia')
             self.aplicar_vacunas = True
             por_vacunar = self.tasa_vacunacion
             for a in self.schedule.agents:
-                if por_vacunar==0:
+                if por_vacunar<=0:
                     break
                 if a.salud == self.SUSCEPTIBLE:
                     a.salud = self.RECUPERADO
@@ -208,6 +210,7 @@ class Vacunacion(CasoBase):
                     por_vacunar -= 1
         
         if self.max_vacunados != 0 and self.vacunados >= self.max_vacunados:
+            print(f'Se alcanzó el número máximo de vacunados el {self.fecha}')
             self.aplicar_vacunas = False
 
 
