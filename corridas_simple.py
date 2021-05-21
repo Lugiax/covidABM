@@ -164,7 +164,7 @@ def modificar_parametros(param_ind, param_mod, params={}):
     return ind_attrs, mod_param
 
 
-class ModeloVacunacion(CasoBase):
+class Vacunacion(CasoBase):
     """
     A partir del dia 15 de Febrero de 2021 se comienza la vacunación con una tasa beta
     diaria. Los agentes vacunados pasan directamente a RECUPERADOS
@@ -207,7 +207,7 @@ class ModeloVacunacion(CasoBase):
                     self.vacunados += 1
                     por_vacunar -= 1
         
-        if self.vacunados >= self.max_vacunados:
+        if if self.max_vacunados != 0 and self.vacunados >= self.max_vacunados:
             self.aplicar_vacunas = False
 
 
